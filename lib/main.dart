@@ -30,17 +30,21 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   Brightness _brightness = Brightness.light;
+  Future<SharedPreferences>? _prefsFuture;
   SharedPreferences? _prefs;
   String? userName;
+  bool _hasPromptedForUserName = false;
 
   @override
   void initState() {
     super.initState();
-    _loadPreferences();
-  }
-
-  Future<void> _loadPreferences() async {
-    _prefs = await SharedPreferences.getInstance();
+    _prefsFuture = SharedPreferences.getInstance().then((prefs) {
+      _prefs = prefs;
+      if (_prefs!.containsKey('userName')) {
+        userName = _prefs!.getString('userName');
+      }
+      return prefs;
+    });
   }
 
   void _toggleBrightness() {
@@ -55,6 +59,8 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   void _setUserName(context) {
+    final TextEditingController controller = TextEditingController(text: userName ?? '');
+
     showCupertinoDialog(
       context: context,
       builder: (context) {
@@ -65,24 +71,24 @@ class _MyHomePageState extends State<MyHomePage> {
           ),
           content: CupertinoTextField(
             placeholder: 'Enter your name',
-            onChanged: (value) {
-              setState(() {
-                userName = value;
-              });
-            },
+            controller: controller,
           ),
           actions: <Widget>[
             CupertinoDialogAction(
               child: const Text('OK'),
-              onPressed: () {
-                if (userName == null || userName!.isEmpty) {
+              onPressed: () async {
+                if (controller.text.isEmpty) {
                   return;
                 }
+
+                setState(() {
+                  userName = controller.text;
+                });
 
                 if (_prefs != null) {
                   _prefs!.setString('userName', userName!);
                 }
-                
+
                 Navigator.of(context).pop();
               },
             ),
@@ -94,16 +100,6 @@ class _MyHomePageState extends State<MyHomePage> {
 
   @override
   Widget build(BuildContext context) {
-    if (_prefs != null && userName == null) {
-      if (_prefs!.containsKey('userName')) {
-        setState(() {
-          userName = _prefs!.getString('userName');
-        });
-      } else {
-        _setUserName(context);
-      }
-    }
-
     return CupertinoApp(
       title: 'Spy',
       theme: CupertinoThemeData(
@@ -117,14 +113,31 @@ class _MyHomePageState extends State<MyHomePage> {
               isLight() ? CupertinoColors.black : CupertinoColors.white,
         ),
       ),
-      home: Builder(
-        builder: (context) {
+      home: FutureBuilder(
+        future: _prefsFuture,
+        builder: (context2, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CupertinoActivityIndicator());
+          }
+
+          _prefs = snapshot.data;
+
+          if (_prefs!.containsKey('userName')) {
+            userName = _prefs!.getString('userName');
+          } else if (!_hasPromptedForUserName) {
+            _hasPromptedForUserName =
+                true; // <-- Set flag so dialog only shows once
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              _setUserName(context2);
+            });
+          }
+
           return CupertinoPageScaffold(
             navigationBar: CupertinoNavigationBar(
               middle: Text(widget.title),
               leading: CupertinoButton(
                 padding: EdgeInsets.zero,
-                onPressed: () => _setUserName(context),
+                onPressed: () => _setUserName(context2),
                 child: Icon(
                   CupertinoIcons.person,
                   color:
@@ -178,7 +191,7 @@ class _MyHomePageState extends State<MyHomePage> {
                     onPressed: () {
                       Navigator.push(
                         context,
-                        CupertinoPageRoute(builder: (context) => CreateGame()),
+                        CupertinoPageRoute(builder: (context2) => CreateGame()),
                       );
                     },
                   ),
