@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "276762252539",
+    "project_id": "spy-flutter-437e0",
+    "storage_bucket": "spy-flutter-437e0.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:276762252539:android:61d81e1c8f4e6b304d8c5e",
+        "android_client_info": {
+          "package_name": "com.example.spy"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDTCexxbD0LqNGAo1Zl9HFFZKM_NqRPTEs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
