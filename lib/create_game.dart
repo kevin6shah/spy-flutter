@@ -162,7 +162,7 @@ class _CreateGameState extends State<CreateGame> {
                   Navigator.pushReplacement(
                     context,
                     CupertinoPageRoute(
-                      builder: (context) => GameLobby(gameCode: gameCode, prefs: widget.prefs),
+                      builder: (context) => GameLobby(prefs: widget.prefs),
                     ),
                   );
                 } else {

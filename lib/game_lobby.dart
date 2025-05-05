@@ -4,15 +4,48 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:spy/main.dart';
 
 class GameLobby extends StatefulWidget {
-  const GameLobby({super.key, required this.prefs, required this.gameCode});
+  const GameLobby({super.key, required this.prefs});
   final SharedPreferences prefs;
-  final String gameCode;
 
   @override
   State<GameLobby> createState() => _GameLobbyState();
 }
 
 class _GameLobbyState extends State<GameLobby> {
+  String gameCode = '';
+  String userName = '';
+
+  bool isHost = false;
+
+  @override
+  void initState() {
+    super.initState();
+    gameCode = widget.prefs.getString('gameCode') ?? '';
+    userName = widget.prefs.getString('userName') ?? '';
+
+    if (gameCode.isEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Navigator.pushReplacement(
+          context,
+          CupertinoPageRoute(builder: (context) => const MyApp()),
+        );
+      });
+    } else {
+      FirebaseFirestore.instance
+          .collection('games')
+          .doc(gameCode)
+          .update({
+            'players': FieldValue.arrayUnion([
+              {'name': userName, 'isHost': false, 'isSpy': false},
+            ]),
+          })
+          .catchError((error) {
+            // Handle error
+            print('Error adding player: $error');
+          });
+    }
+  }
+
   void _showDialog(Widget child) {
     showCupertinoModalPopup<void>(
       context: context,
@@ -40,7 +73,7 @@ class _GameLobbyState extends State<GameLobby> {
         stream:
             FirebaseFirestore.instance
                 .collection('games')
-                .doc(widget.gameCode)
+                .doc(gameCode)
                 .snapshots(),
         builder: (context, snapshot) {
           if (!snapshot.hasData) {
@@ -53,16 +86,22 @@ class _GameLobbyState extends State<GameLobby> {
                   : {};
 
           if (gameData.isEmpty) {
-            widget.prefs.remove('gameCode');
-            Navigator.pushReplacement(
-              context,
-              CupertinoPageRoute(builder: (context) => const MyApp()),
-            );
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              widget.prefs.remove('gameCode');
+              Navigator.pushReplacement(
+                context,
+                CupertinoPageRoute(builder: (context) => const MyApp()),
+              );
+            });
           }
 
-          List<Map<String, dynamic>> allPlayers = (gameData['players'] as List<dynamic>)
-              .map((e) => e as Map<String, dynamic>)
-              .toList();
+          // Check if the user is the host
+          isHost = gameData['host'] == userName;
+
+          List<Map<String, dynamic>> allPlayers =
+              (gameData['players'] as List<dynamic>)
+                  .map((e) => e as Map<String, dynamic>)
+                  .toList();
 
           // Aggregate the players into rows of 4
           List<List<Map<String, dynamic>>> rows = [];
@@ -84,7 +123,7 @@ class _GameLobbyState extends State<GameLobby> {
                     SizedBox(height: 30),
                     CupertinoButton.tinted(
                       child: Text(
-                        'Game Code: ${widget.gameCode}',
+                        'Game Code: $gameCode',
                         style: const TextStyle(fontSize: 24),
                       ),
                       onPressed: () {},
@@ -103,6 +142,10 @@ class _GameLobbyState extends State<GameLobby> {
                             ],
                           ),
                           onPressed: () {
+                            if (!isHost) {
+                              return;
+                            }
+
                             _showDialog(
                               CupertinoPicker(
                                 magnification: 1.22,
@@ -112,7 +155,7 @@ class _GameLobbyState extends State<GameLobby> {
                                 onSelectedItemChanged: (int selectedItem) {
                                   FirebaseFirestore.instance
                                       .collection('games')
-                                      .doc(widget.gameCode)
+                                      .doc(gameCode)
                                       .update({'numPlayers': selectedItem + 3});
                                 },
                                 children: List<Widget>.generate(18, (
@@ -135,6 +178,10 @@ class _GameLobbyState extends State<GameLobby> {
                             ],
                           ),
                           onPressed: () {
+                            if (!isHost) {
+                              return;
+                            }
+
                             _showDialog(
                               CupertinoPicker(
                                 magnification: 1.22,
@@ -144,7 +191,7 @@ class _GameLobbyState extends State<GameLobby> {
                                 onSelectedItemChanged: (int selectedItem) {
                                   FirebaseFirestore.instance
                                       .collection('games')
-                                      .doc(widget.gameCode)
+                                      .doc(gameCode)
                                       .update({'numSpies': selectedItem + 1});
                                 },
                                 children: List<Widget>.generate(5, (int index) {
@@ -186,58 +233,97 @@ class _GameLobbyState extends State<GameLobby> {
                     ),
                   ],
                 ),
-                Column(
-                  children: [
-                    CupertinoButton.tinted(
-                      color: CupertinoColors.systemFill,
-                      child: Text(
-                        'Start Game',
-                        style: TextStyle(
-                          color:
-                              (allPlayers.length < gameData['numPlayers'])
-                                  ? CupertinoColors.inactiveGray
-                                  : CupertinoColors.label,
-                        ),
-                      ),
-                      onPressed: () {
-                        if (allPlayers.length < gameData['numPlayers']) {
-                          showCupertinoDialog(
-                            context: context,
-                            builder:
-                                (context) => CupertinoAlertDialog(
-                                  title: const Text('Not enough players'),
-                                  content: const Text(
-                                    'Please wait for more players to join.',
-                                  ),
-                                  actions: [
-                                    CupertinoDialogAction(
-                                      child: const Text('OK'),
-                                      onPressed: () {
-                                        Navigator.pop(context);
-                                      },
+                isHost
+                    ? Column(
+                      children: [
+                        CupertinoButton.tinted(
+                          color: CupertinoColors.systemFill,
+                          child: Text(
+                            'Start Game',
+                            style: TextStyle(
+                              color:
+                                  (allPlayers.length < gameData['numPlayers'])
+                                      ? CupertinoColors.inactiveGray
+                                      : CupertinoColors.label,
+                            ),
+                          ),
+                          onPressed: () {
+                            if (allPlayers.length < gameData['numPlayers']) {
+                              showCupertinoDialog(
+                                context: context,
+                                builder:
+                                    (context) => CupertinoAlertDialog(
+                                      title: const Text('Not enough players'),
+                                      content: const Text(
+                                        'Please wait for more players to join.',
+                                      ),
+                                      actions: [
+                                        CupertinoDialogAction(
+                                          child: const Text('OK'),
+                                          onPressed: () {
+                                            Navigator.pop(context);
+                                          },
+                                        ),
+                                      ],
                                     ),
-                                  ],
-                                ),
-                          );
-                        } else {}
-                      },
-                    ),
-                    SizedBox(height: 15),
-                    CupertinoButton.filled(
-                      child: Text('Exit Game'),
-                      onPressed: () {
+                              );
+                            } else {}
+                          },
+                        ),
+                        SizedBox(height: 15),
+                        CupertinoButton.filled(
+                          child: Text('Exit Game'),
+                          onPressed: () {
+                            if (!mounted) {
+                              return;
+                            }
+
+                            FirebaseFirestore.instance
+                                .collection('games')
+                                .doc(gameCode)
+                                .delete();
+
+                            widget.prefs.remove('gameCode');
+
+                            Navigator.pushReplacement(
+                              context,
+                              CupertinoPageRoute(
+                                builder: (context) => const MyApp(),
+                              ),
+                            );
+                          },
+                        ),
+                      ],
+                    )
+                    : CupertinoButton.filled(
+                      child: Text('Leave Game'),
+                      onPressed: () async {
                         if (!mounted) {
                           return;
                         }
 
                         FirebaseFirestore.instance
                             .collection('games')
-                            .doc(widget.gameCode)
-                            .delete();
+                            .doc(gameCode)
+                            .set({
+                              'players': FieldValue.arrayRemove([
+                                {
+                                  'name': userName,
+                                  'isHost': false,
+                                  'isSpy': false,
+                                },
+                                {
+                                  'name': userName,
+                                  'isHost': false,
+                                  'isSpy': true,
+                                },
+                              ]),
+                            }, SetOptions(merge: true));
 
-                        widget.prefs.remove('gameCode');
+                        await widget.prefs.remove('gameCode');
 
                         Navigator.pushReplacement(
+                          // ignore: use_build_context_synchronously
                           context,
                           CupertinoPageRoute(
                             builder: (context) => const MyApp(),
@@ -245,8 +331,6 @@ class _GameLobbyState extends State<GameLobby> {
                         );
                       },
                     ),
-                  ],
-                ),
               ],
             ),
           );

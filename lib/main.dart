@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -57,6 +58,122 @@ class _MyHomePageState extends State<MyHomePage> {
 
   bool isLight() {
     return _brightness == Brightness.light;
+  }
+
+  Future<bool> checkGameCode(String gameCode) async {
+    DocumentSnapshot documentSnapshot =
+        await FirebaseFirestore.instance
+            .collection('games')
+            .doc(gameCode)
+            .get();
+    if (documentSnapshot.exists) {
+      return true;
+    } else {
+      return false;
+    }
+  }
+
+  void showErrorDialog(BuildContext context, String invalidMessage) {
+    showCupertinoDialog(
+      context: context,
+      builder: (context) {
+        return CupertinoAlertDialog(
+          title: const Text('Error'),
+          content: Text('$invalidMessage. Please try again.'),
+          actions: <Widget>[
+            CupertinoDialogAction(
+              child: const Text('OK'),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  bool validateGameCode(String gameCode) {
+    if (gameCode.isEmpty ||
+        gameCode.length != 6 ||
+        !RegExp(r'^[A-Z]+$').hasMatch(gameCode)) {
+      return false;
+    }
+    // Add any other validation logic here if needed
+    return true;
+  }
+
+  Future<bool> checkUserName(String userName, String gameCode) async {
+    DocumentSnapshot documentSnapshot =
+        await FirebaseFirestore.instance
+            .collection('games')
+            .doc(gameCode)
+            .get();
+    if (documentSnapshot.exists) {
+      Map<String, dynamic> data =
+          documentSnapshot.data() as Map<String, dynamic>;
+      List<dynamic> players = data['players'] ?? [];
+      List<String> playerNames =
+          players.map((e) => e['name'].toString()).toList();
+      return !playerNames.contains(userName);
+    }
+    return false;
+  }
+
+  void joinGameLobby(BuildContext context, String value) async {
+    if (value.isEmpty || !mounted) {
+      return;
+    }
+
+    if (validateGameCode(value) && await checkGameCode(value)) {
+      if (await checkUserName(userName!, value)) {
+        await _prefs!.setString('gameCode', value);
+        // ignore: use_build_context_synchronously
+        Navigator.pop(context);
+        Navigator.pushReplacement(
+          // ignore: use_build_context_synchronously
+          context,
+          CupertinoPageRoute(builder: (context) => GameLobby(prefs: _prefs!)),
+        );
+      } else {
+        // ignore: use_build_context_synchronously
+        showErrorDialog(context, 'Username is already taken');
+      }
+    } else {
+      // ignore: use_build_context_synchronously
+      showErrorDialog(context, 'Invalid game code');
+    }
+  }
+
+  void joinGame(BuildContext context) {
+    TextEditingController controller = TextEditingController();
+
+    showCupertinoDialog(
+      context: context,
+      builder: (context) {
+        return CupertinoAlertDialog(
+          title: Padding(
+            padding: const EdgeInsets.only(bottom: 15),
+            child: const Text('Join Game'),
+          ),
+          content: CupertinoTextField(
+            placeholder: 'Enter game code',
+            textCapitalization: TextCapitalization.characters,
+            controller: controller,
+            onChanged: (value) => controller.text = value,
+            onSubmitted: (value) => joinGameLobby(context, value),
+          ),
+          actions: <Widget>[
+            CupertinoDialogAction(
+              child: const Text('Cancel'),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+            CupertinoDialogAction(
+              child: const Text('Join'),
+              onPressed: () => joinGameLobby(context, controller.text),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   void _setUserName(context) {
@@ -136,12 +253,11 @@ class _MyHomePageState extends State<MyHomePage> {
           }
 
           if (_prefs!.containsKey('gameCode')) {
-            String gameCode = _prefs!.getString('gameCode')!;
             WidgetsBinding.instance.addPostFrameCallback((_) {
               Navigator.pushReplacement(
                 context2,
                 CupertinoPageRoute(
-                  builder: (context) => GameLobby(gameCode: gameCode, prefs: _prefs!),
+                  builder: (context) => GameLobby(prefs: _prefs!),
                 ),
               );
             });
@@ -190,7 +306,7 @@ class _MyHomePageState extends State<MyHomePage> {
                                 : CupertinoColors.black,
                       ),
                     ),
-                    onPressed: () {},
+                    onPressed: () => joinGame(context2),
                   ),
                   const SizedBox(height: 20),
                   CupertinoButton.filled(
