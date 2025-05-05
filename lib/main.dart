@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:spy/create_game.dart';
 import 'package:spy/firebase_options.dart';
 import 'package:spy/game_lobby.dart';
+import 'package:spy/instructions.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -333,6 +334,16 @@ class _MyHomePageState extends State<MyHomePage> {
                         ),
                       );
                     },
+                  ),
+                  CupertinoButton(
+                    child: Text('How to play?', style: TextStyle(fontSize: 14)),
+                    onPressed:
+                        () => Navigator.push(
+                          context2,
+                          CupertinoPageRoute(
+                            builder: (context) => const Instructions(),
+                          ),
+                        ),
                   ),
                 ],
               ),
