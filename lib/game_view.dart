@@ -223,7 +223,8 @@ class _GameViewState extends State<GameView> {
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
                                 Image.asset(
-                                  'assets/logos/spy_dark.png',
+                                  'assets/logos/spy.png',
+                                  color: CupertinoColors.white,
                                   width: 200,
                                 ),
                                 Text(

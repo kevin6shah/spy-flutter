@@ -139,9 +139,7 @@ class _GameLobbyState extends State<GameLobby> {
           final docSnapshot = snapshot.data as DocumentSnapshot;
           final docExists = docSnapshot.exists && docSnapshot.data() != null;
           final gameData =
-              docExists
-                  ? docSnapshot.data() as Map<String, dynamic>
-                  : {};
+              docExists ? docSnapshot.data() as Map<String, dynamic> : {};
 
           if (!docExists || gameData.isEmpty) {
             WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -252,6 +250,7 @@ class _GameLobbyState extends State<GameLobby> {
                                 if (!isHost) {
                                   return;
                                 }
+
                                 _showDialog(
                                   CupertinoPicker(
                                     magnification: 1.22,
@@ -365,9 +364,15 @@ class _GameLobbyState extends State<GameLobby> {
                             'Start Game',
                             style: TextStyle(
                               color:
-                                  (allPlayers.length < gameData['numPlayers'])
+                                  ThemeUtils.isLightMode(context)
+                                      ? (allPlayers.length <
+                                              gameData['numPlayers'])
+                                          ? CupertinoColors.inactiveGray
+                                          : CupertinoColors.label
+                                      : (allPlayers.length <
+                                          gameData['numPlayers'])
                                       ? CupertinoColors.inactiveGray
-                                      : CupertinoColors.label,
+                                      : CupertinoColors.white,
                             ),
                           ),
                           onPressed: () {
@@ -400,7 +405,15 @@ class _GameLobbyState extends State<GameLobby> {
                         ),
                         SizedBox(height: 15),
                         CupertinoButton.filled(
-                          child: Text('Exit Game'),
+                          child: Text(
+                            'Exit Game',
+                            style: TextStyle(
+                              color:
+                                  ThemeUtils.isLightMode(context)
+                                      ? CupertinoColors.white
+                                      : CupertinoColors.black,
+                            ),
+                          ),
                           onPressed: () {
                             if (!mounted) {
                               return;

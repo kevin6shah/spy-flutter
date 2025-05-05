@@ -292,9 +292,11 @@ class _MyHomePageState extends State<MyHomePage> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: <Widget>[
                   Image.asset(
-                    isLight()
-                        ? 'assets/logos/spy.jpg'
-                        : 'assets/logos/spy_dark.png',
+                    'assets/logos/spy.png',
+                    color:
+                        isLight()
+                            ? CupertinoColors.black
+                            : CupertinoColors.white,
                   ),
                   CupertinoButton.filled(
                     child: Text(
