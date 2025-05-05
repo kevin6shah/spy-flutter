@@ -1,9 +1,17 @@
+// ignore_for_file: use_build_context_synchronously
+
 import 'dart:math';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:spy/game_lobby.dart';
+import 'package:spy/main.dart';
 
 class CreateGame extends StatefulWidget {
-  const CreateGame({super.key});
+  final String userName;
+  final SharedPreferences prefs;
+  const CreateGame({super.key, required this.userName, required this.prefs});
 
   @override
   State<CreateGame> createState() => _CreateGameState();
@@ -30,6 +38,31 @@ class _CreateGameState extends State<CreateGame> {
             child: SafeArea(top: false, child: child),
           ),
     );
+  }
+
+  Future<String> createGame() async {
+    String gameCode = getRandom(6);
+    await FirebaseFirestore.instance
+        .collection('games')
+        .doc(gameCode)
+        .set({
+          'host': widget.userName,
+          'numPlayers': numberOfPlayers,
+          'numSpies': numberOfSpies,
+          'players': [
+            {
+              'name': widget.userName,
+              'isHost': true,
+              'isSpy': false,
+            }
+          ],
+          'gameStarted': false,
+        })
+        .catchError((error) {
+          gameCode = 'ERROR';
+        });
+
+    return gameCode;
   }
 
   String getRandom(int length) {
@@ -110,9 +143,47 @@ class _CreateGameState extends State<CreateGame> {
               ],
             ),
             CupertinoButton.filled(
-              child: Text('Create Game'),
-              onPressed: () {
-                print(getRandom(6));
+              child: Text(
+                'Create Game',
+                style: TextStyle(
+                  color:
+                      ThemeUtils.isLightMode(context)
+                          ? CupertinoColors.white
+                          : CupertinoColors.black,
+                ),
+              ),
+              onPressed: () async {
+                if (!mounted) return;
+                String gameCode = await createGame();
+                await widget.prefs.setString('gameCode', gameCode);
+                
+                if (gameCode != 'ERROR') {
+                  Navigator.pop(context);
+                  Navigator.pushReplacement(
+                    context,
+                    CupertinoPageRoute(
+                      builder: (context) => GameLobby(gameCode: gameCode, prefs: widget.prefs),
+                    ),
+                  );
+                } else {
+                  // Handle error
+                  showCupertinoDialog(
+                    context: context,
+                    builder:
+                        (context) => CupertinoAlertDialog(
+                          title: const Text('Error'),
+                          content: const Text('Failed to create game.'),
+                          actions: <Widget>[
+                            CupertinoDialogAction(
+                              child: const Text('OK'),
+                              onPressed: () {
+                                Navigator.of(context).pop();
+                              },
+                            ),
+                          ],
+                        ),
+                  );
+                }
               },
             ),
           ],

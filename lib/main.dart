@@ -3,6 +3,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:spy/create_game.dart';
 import 'package:spy/firebase_options.dart';
+import 'package:spy/game_lobby.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -59,7 +60,9 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   void _setUserName(context) {
-    final TextEditingController controller = TextEditingController(text: userName ?? '');
+    final TextEditingController controller = TextEditingController(
+      text: userName ?? '',
+    );
 
     showCupertinoDialog(
       context: context,
@@ -132,6 +135,18 @@ class _MyHomePageState extends State<MyHomePage> {
             });
           }
 
+          if (_prefs!.containsKey('gameCode')) {
+            String gameCode = _prefs!.getString('gameCode')!;
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              Navigator.pushReplacement(
+                context2,
+                CupertinoPageRoute(
+                  builder: (context) => GameLobby(gameCode: gameCode, prefs: _prefs!),
+                ),
+              );
+            });
+          }
+
           return CupertinoPageScaffold(
             navigationBar: CupertinoNavigationBar(
               middle: Text(widget.title),
@@ -190,8 +205,14 @@ class _MyHomePageState extends State<MyHomePage> {
                     ),
                     onPressed: () {
                       Navigator.push(
-                        context,
-                        CupertinoPageRoute(builder: (context2) => CreateGame()),
+                        context2,
+                        CupertinoPageRoute(
+                          builder:
+                              (context) => CreateGame(
+                                userName: userName!,
+                                prefs: _prefs!,
+                              ),
+                        ),
                       );
                     },
                   ),
@@ -202,5 +223,12 @@ class _MyHomePageState extends State<MyHomePage> {
         },
       ),
     );
+  }
+}
+
+class ThemeUtils {
+  static bool isLightMode(BuildContext context) {
+    final brightness = CupertinoTheme.of(context).brightness;
+    return brightness == Brightness.light;
   }
 }
