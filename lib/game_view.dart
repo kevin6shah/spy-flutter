@@ -73,7 +73,25 @@ class _GameViewState extends State<GameView> {
     });
   }
 
-  void startCountdown() {
+  Future<String> getRandomWord(String pack) async {
+    // Fetch a random word from the specified pack
+    List<String> words = await FirebaseFirestore.instance
+        .collection('packs')
+        .doc(pack)
+        .get()
+        .then((doc) {
+      if (doc.exists) {
+        final data = doc.data() as Map<String, dynamic>;
+        return List<String>.from(data['words']);
+      } else {
+        return [];
+      }
+    });
+
+    return words[Random().nextInt(words.length)];
+  }
+
+  void startCountdown(bool isHost, String pack) {
     countdownTimer?.cancel();
     setState(() {
       countdown = 5;
@@ -85,9 +103,13 @@ class _GameViewState extends State<GameView> {
         });
       } else {
         timer.cancel();
-        FirebaseFirestore.instance.collection('games').doc(gameCode).update({
-          'wordState': 'Hotel',
-        });
+        if (isHost) {
+          getRandomWord(pack).then((word) {
+            FirebaseFirestore.instance.collection('games').doc(gameCode).update(
+              {'wordState': word},
+            );
+          });
+        }
       }
     });
   }
@@ -158,11 +180,13 @@ class _GameViewState extends State<GameView> {
             }
 
             String wordState = gameData['wordState'];
+            isHost = gameData['host'] == userName;
+            String pack = gameData['pack'];
 
             // Only start countdown when wordState changes to 'COUNTER'
             if (wordState == 'COUNTER' && lastWordState != 'COUNTER') {
               WidgetsBinding.instance.addPostFrameCallback((_) {
-                startCountdown();
+                startCountdown(isHost, pack);
               });
             }
             lastWordState = wordState;
@@ -180,8 +204,6 @@ class _GameViewState extends State<GameView> {
                 ),
               );
             }
-
-            isHost = gameData['host'] == userName;
 
             bool isSpy = gameData['players'].any(
               (player) => player['name'] == userName && player['isSpy'],

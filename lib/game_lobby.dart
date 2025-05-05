@@ -46,6 +46,8 @@ class _GameLobbyState extends State<GameLobby> {
   String gameCode = '';
   String userName = '';
 
+  List<String>? packs;
+
   bool isHost = false;
 
   Future<bool> userExists(String gameCode, String userName) async {
@@ -82,6 +84,19 @@ class _GameLobbyState extends State<GameLobby> {
             'players': FieldValue.arrayUnion([
               {'name': userName, 'isHost': false, 'isSpy': false},
             ]),
+          });
+        }
+      });
+
+      FirebaseFirestore.instance.collection('packs').get().then((
+        QuerySnapshot querySnapshot,
+      ) {
+        if (querySnapshot.docs.isNotEmpty) {
+          setState(() {
+            packs =
+                querySnapshot.docs
+                    .map((DocumentSnapshot doc) => doc.id)
+                    .toList();
           });
         }
       });
@@ -212,6 +227,9 @@ class _GameLobbyState extends State<GameLobby> {
                                       .doc(gameCode)
                                       .update({'numPlayers': selectedItem + 3});
                                 },
+                                scrollController: FixedExtentScrollController(
+                                  initialItem: gameData['numPlayers'] - 3,
+                                ),
                                 children: List<Widget>.generate(18, (
                                   int index,
                                 ) {
@@ -222,6 +240,48 @@ class _GameLobbyState extends State<GameLobby> {
                             );
                           },
                         ),
+                        SizedBox(width: 10),
+                        packs == null
+                            ? CupertinoActivityIndicator()
+                            : CupertinoButton.tinted(
+                              child: Icon(CupertinoIcons.square_list, size: 30),
+                              onPressed: () {
+                                if (!isHost) {
+                                  return;
+                                }
+                                _showDialog(
+                                  CupertinoPicker(
+                                    magnification: 1.22,
+                                    squeeze: 1.2,
+                                    useMagnifier: true,
+                                    itemExtent: 32.0,
+                                    onSelectedItemChanged: (int selectedItem) {
+                                      FirebaseFirestore.instance
+                                          .collection('games')
+                                          .doc(gameCode)
+                                          .update({
+                                            'pack': packs![selectedItem],
+                                          });
+                                    },
+                                    scrollController:
+                                        rows
+                                            .map(
+                                              (row) =>
+                                                  FixedExtentScrollController(
+                                                    initialItem: packs!.indexOf(
+                                                      gameData['pack'],
+                                                    ),
+                                                  ),
+                                            )
+                                            .toList()[0],
+                                    children: [
+                                      for (int i = 0; i < packs!.length; i++)
+                                        Center(child: Text(packs![i])),
+                                    ],
+                                  ),
+                                );
+                              },
+                            ),
                         SizedBox(width: 10),
                         CupertinoButton.tinted(
                           child: Row(
@@ -242,6 +302,9 @@ class _GameLobbyState extends State<GameLobby> {
                                 squeeze: 1.2,
                                 useMagnifier: true,
                                 itemExtent: 32.0,
+                                scrollController: FixedExtentScrollController(
+                                  initialItem: gameData['numSpies'] - 1,
+                                ),
                                 onSelectedItemChanged: (int selectedItem) {
                                   FirebaseFirestore.instance
                                       .collection('games')

@@ -20,6 +20,24 @@ class CreateGame extends StatefulWidget {
 class _CreateGameState extends State<CreateGame> {
   int numberOfPlayers = 3;
   int numberOfSpies = 1;
+  List<String>? packs;
+  int packIdx = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    FirebaseFirestore.instance.collection('packs').get().then((
+      QuerySnapshot querySnapshot,
+    ) {
+      if (querySnapshot.docs.isNotEmpty) {
+        setState(() {
+          packs =
+              querySnapshot.docs.map((DocumentSnapshot doc) => doc.id).toList();
+        });
+      }
+    });
+    // print(packs);
+  }
 
   void _showDialog(Widget child) {
     showCupertinoModalPopup<void>(
@@ -47,6 +65,7 @@ class _CreateGameState extends State<CreateGame> {
         .doc(gameCode)
         .set({
           'host': widget.userName,
+          'pack': packs![packIdx],
           'numPlayers': numberOfPlayers,
           'numSpies': numberOfSpies,
           'players': [
@@ -92,9 +111,16 @@ class _CreateGameState extends State<CreateGame> {
                           squeeze: 1.2,
                           useMagnifier: true,
                           itemExtent: 32.0,
+                          scrollController: FixedExtentScrollController(
+                            initialItem: numberOfPlayers - 3,
+                          ),
                           onSelectedItemChanged: (int selectedItem) {
                             setState(() {
                               numberOfPlayers = selectedItem + 3;
+                              numberOfSpies = min(
+                                numberOfSpies,
+                                numberOfPlayers,
+                              );
                             });
                           },
                           children: List<Widget>.generate(18, (int index) {
@@ -119,6 +145,9 @@ class _CreateGameState extends State<CreateGame> {
                           squeeze: 1.2,
                           useMagnifier: true,
                           itemExtent: 32.0,
+                          scrollController: FixedExtentScrollController(
+                            initialItem: numberOfSpies - 1,
+                          ),
                           onSelectedItemChanged: (int selectedItem) {
                             setState(() {
                               numberOfSpies = selectedItem + 1;
@@ -139,6 +168,38 @@ class _CreateGameState extends State<CreateGame> {
                     ],
                   ),
                 ),
+                SizedBox(height: 20),
+                packs != null
+                    ? GestureDetector(
+                      onTap:
+                          () => _showDialog(
+                            CupertinoPicker(
+                              magnification: 1.22,
+                              squeeze: 1.2,
+                              useMagnifier: true,
+                              itemExtent: 32.0,
+                              scrollController: FixedExtentScrollController(
+                                initialItem: packIdx,
+                              ),
+                              onSelectedItemChanged: (int selectedItem) {
+                                setState(() {
+                                  packIdx = selectedItem;
+                                });
+                              },
+                              children: [
+                                for (int i = 0; i < packs!.length; i++)
+                                  Center(child: Text(packs![i])),
+                              ],
+                            ),
+                          ),
+                      child: Column(
+                        children: [
+                          Icon(CupertinoIcons.square_list, size: 100),
+                          Text('Pack: ${packs![packIdx]}'),
+                        ],
+                      ),
+                    )
+                    : CupertinoActivityIndicator(),
               ],
             ),
             CupertinoButton.filled(
