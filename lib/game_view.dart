@@ -35,6 +35,16 @@ class _GameViewState extends State<GameView> {
         final players = data['players'] as List<dynamic>;
         final numSpies = data['numSpies'] as int;
 
+        if (data['gameStarted'] == false) {
+          Navigator.pushReplacement(
+            // ignore: use_build_context_synchronously
+            context,
+            CupertinoPageRoute(
+              builder: (context) => GameLobby(prefs: widget.prefs),
+            ),
+          );
+        }
+
         // Randomly assign spies
         List<int> spyIndices = [];
         final numPlayers = players.length;
@@ -213,19 +223,99 @@ class _GameViewState extends State<GameView> {
                   ),
 
                   isHost
-                      ? CupertinoButton.tinted(
-                        color: CupertinoColors.white,
-                        child: Text(
-                          'Stop Game',
-                          style: TextStyle(color: CupertinoColors.white),
-                        ),
-                        onPressed: () {
-                          if (!mounted) {
-                            return;
-                          }
+                      ? Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          CupertinoButton.tinted(
+                            color: CupertinoColors.white,
+                            child: Text(
+                              'Back to Lobby',
+                              style: TextStyle(color: CupertinoColors.white),
+                            ),
+                            onPressed: () {
+                              if (!mounted) {
+                                return;
+                              }
 
-                          GameLobby.exitGame(context, gameCode, widget.prefs);
-                        },
+                              FirebaseFirestore.instance
+                                  .collection('games')
+                                  .doc(gameCode)
+                                  .update({
+                                    'wordState': 'INIT',
+                                    'gameStarted': false,
+                                  });
+
+                              Navigator.pushReplacement(
+                                context,
+                                CupertinoPageRoute(
+                                  builder:
+                                      (context) =>
+                                          GameLobby(prefs: widget.prefs),
+                                ),
+                              );
+                            },
+                          ),
+                          SizedBox(width: 10),
+                          CupertinoButton.tinted(
+                            color: CupertinoColors.white,
+                            child: Icon(
+                              CupertinoIcons.xmark_circle_fill,
+                              color: CupertinoColors.destructiveRed,
+                            ),
+                            onPressed: () {
+                              if (!mounted) {
+                                return;
+                              }
+
+                              // Prompt for confirmation
+                              showCupertinoDialog(
+                                context: context,
+                                builder: (context) {
+                                  return CupertinoAlertDialog(
+                                    title: const Text('Stop Game'),
+                                    content: const Text(
+                                      'Are you sure you want to stop the game?',
+                                    ),
+                                    actions: [
+                                      CupertinoDialogAction(
+                                        child: const Text('Cancel'),
+                                        onPressed: () {
+                                          Navigator.pop(context);
+                                        },
+                                      ),
+                                      CupertinoDialogAction(
+                                        child: const Text('Stop'),
+                                        onPressed: () {
+                                          Navigator.pop(context);
+                                          GameLobby.exitGame(
+                                            context,
+                                            gameCode,
+                                            widget.prefs,
+                                          );
+                                        },
+                                      ),
+                                    ],
+                                  );
+                                },
+                              );
+                            },
+                          ),
+                          SizedBox(width: 10),
+                          CupertinoButton.tinted(
+                            color: CupertinoColors.white,
+                            child: Text(
+                              'Next Round',
+                              style: TextStyle(color: CupertinoColors.white),
+                            ),
+                            onPressed: () {
+                              if (!mounted) {
+                                return;
+                              }
+
+                              initializeGame();
+                            },
+                          ),
+                        ],
                       )
                       : CupertinoButton.tinted(
                         color: CupertinoColors.white,
