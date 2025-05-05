@@ -73,7 +73,21 @@ class _GameViewState extends State<GameView> {
     });
   }
 
-  Future<String> getRandomWord(String pack) async {
+  Future<void> appendUsedWord(String word) async {
+    // Append the used word to the list of used words
+    await FirebaseFirestore.instance.collection('games').doc(gameCode).update({
+      'usedWords': FieldValue.arrayUnion([word]),
+    });
+  }
+
+  Future<void> resetUsedWords() async {
+    // Reset the used words list
+    await FirebaseFirestore.instance.collection('games').doc(gameCode).update({
+      'usedWords': [],
+    });
+  }
+
+  Future<String> getRandomWord(String pack, List<String> usedWords) async {
     // Fetch a random word from the specified pack
     List<String> words = await FirebaseFirestore.instance
         .collection('packs')
@@ -88,10 +102,17 @@ class _GameViewState extends State<GameView> {
           }
         });
 
+    // Filter out used words
+    words.removeWhere((word) => usedWords.contains(word));
+    if (words.isEmpty) {
+      // If no words are available, return a default word or handle the case
+      return 'No words available';
+    }
+
     return words[Random().nextInt(words.length)];
   }
 
-  void startCountdown(bool isHost, String pack) {
+  void startCountdown(bool isHost, String pack, List<String> usedWords) {
     countdownTimer?.cancel();
     setState(() {
       countdown = 5;
@@ -104,7 +125,7 @@ class _GameViewState extends State<GameView> {
       } else {
         timer.cancel();
         if (isHost) {
-          getRandomWord(pack).then((word) {
+          getRandomWord(pack, usedWords).then((word) {
             FirebaseFirestore.instance.collection('games').doc(gameCode).update(
               {'wordState': word},
             );
@@ -185,11 +206,13 @@ class _GameViewState extends State<GameView> {
             String wordState = gameData['wordState']?.toString() ?? '';
             isHost = (gameData['host']?.toString() ?? '') == userName;
             String pack = gameData['pack']?.toString() ?? '';
+            List<String> usedWords =
+                List<String>.from(gameData['usedWords'] ?? []);
 
             // Only start countdown when wordState changes to 'COUNTER'
             if (wordState == 'COUNTER' && lastWordState != 'COUNTER') {
               WidgetsBinding.instance.addPostFrameCallback((_) {
-                startCountdown(isHost, pack);
+                startCountdown(isHost, pack, usedWords);
               });
             }
             lastWordState = wordState;
@@ -243,6 +266,7 @@ class _GameViewState extends State<GameView> {
                                 children: [
                                   Text(
                                     wordState.toUpperCase(),
+                                    textAlign: TextAlign.center,
                                     style: const TextStyle(
                                       fontSize: 75,
                                       color: CupertinoColors.white,
@@ -276,13 +300,15 @@ class _GameViewState extends State<GameView> {
                                 return;
                               }
 
-                              FirebaseFirestore.instance
-                                  .collection('games')
-                                  .doc(gameCode)
-                                  .update({
-                                    'wordState': 'INIT',
-                                    'gameStarted': false,
-                                  });
+                              resetUsedWords().then((_) {
+                                FirebaseFirestore.instance
+                                    .collection('games')
+                                    .doc(gameCode)
+                                    .update({
+                                      'wordState': 'INIT',
+                                      'gameStarted': false,
+                                    });
+                              });
 
                               Navigator.pushReplacement(
                                 context,
@@ -351,7 +377,9 @@ class _GameViewState extends State<GameView> {
                                 return;
                               }
 
-                              initializeGame();
+                              appendUsedWord(
+                                wordState,
+                              ).then((_) => initializeGame());
                             },
                           ),
                         ],
