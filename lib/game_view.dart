@@ -80,13 +80,13 @@ class _GameViewState extends State<GameView> {
         .doc(pack)
         .get()
         .then((doc) {
-      if (doc.exists) {
-        final data = doc.data() as Map<String, dynamic>;
-        return List<String>.from(data['words']);
-      } else {
-        return [];
-      }
-    });
+          if (doc.exists) {
+            final data = doc.data() as Map<String, dynamic>;
+            return List<String>.from(data['words']);
+          } else {
+            return [];
+          }
+        });
 
     return words[Random().nextInt(words.length)];
   }
@@ -177,11 +177,14 @@ class _GameViewState extends State<GameView> {
                   CupertinoPageRoute(builder: (context) => const MyApp()),
                 );
               });
+              // Add a return here to prevent further build
+              return const SizedBox.shrink();
             }
 
-            String wordState = gameData['wordState'];
-            isHost = gameData['host'] == userName;
-            String pack = gameData['pack'];
+            // Use null-aware operators and provide defaults
+            String wordState = gameData['wordState']?.toString() ?? '';
+            isHost = (gameData['host']?.toString() ?? '') == userName;
+            String pack = gameData['pack']?.toString() ?? '';
 
             // Only start countdown when wordState changes to 'COUNTER'
             if (wordState == 'COUNTER' && lastWordState != 'COUNTER') {
@@ -234,12 +237,25 @@ class _GameViewState extends State<GameView> {
                               ],
                             )
                             : Center(
-                              child: Text(
-                                wordState,
-                                style: const TextStyle(
-                                  fontSize: 100,
-                                  color: CupertinoColors.white,
-                                ),
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Text(
+                                    wordState.toUpperCase(),
+                                    style: const TextStyle(
+                                      fontSize: 75,
+                                      color: CupertinoColors.white,
+                                    ),
+                                  ),
+                                  SizedBox(height: 20),
+                                  Text(
+                                    'Keep this word a secret!',
+                                    style: const TextStyle(
+                                      fontSize: 15,
+                                      color: CupertinoColors.systemGrey,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                   ),

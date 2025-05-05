@@ -137,12 +137,13 @@ class _GameLobbyState extends State<GameLobby> {
             return Center(child: CupertinoActivityIndicator());
           }
           final docSnapshot = snapshot.data as DocumentSnapshot;
+          final docExists = docSnapshot.exists && docSnapshot.data() != null;
           final gameData =
-              docSnapshot.data() != null
+              docExists
                   ? docSnapshot.data() as Map<String, dynamic>
                   : {};
 
-          if (gameData.isEmpty) {
+          if (!docExists || gameData.isEmpty) {
             WidgetsBinding.instance.addPostFrameCallback((_) {
               widget.prefs.remove('gameCode');
               Navigator.pushReplacement(
@@ -150,6 +151,7 @@ class _GameLobbyState extends State<GameLobby> {
                 CupertinoPageRoute(builder: (context) => const MyApp()),
               );
             });
+            return const SizedBox.shrink();
           }
 
           // Check if the game has started
@@ -162,13 +164,14 @@ class _GameLobbyState extends State<GameLobby> {
                 ),
               );
             });
+            return const SizedBox.shrink();
           }
 
           // Check if the user is the host
           isHost = gameData['host'] == userName;
 
           List<Map<String, dynamic>> allPlayers =
-              (gameData['players'] as List<dynamic>)
+              (gameData['players'] as List<dynamic>? ?? [])
                   .map((e) => e as Map<String, dynamic>)
                   .toList();
 
