@@ -36,5 +36,15 @@
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
 	</array>
+
+	<!-- Local Network Usage Permission -->
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>This app requires access to the local network to enable game features and debugging.</string>
+
+	<!-- Bonjour Service Types (optional, but recommended for local network) -->
+	<key>NSBonjourServices</key>
+	<array>
+		<string>_dartobservatory._tcp</string>
+	</array>
 </dict>
 </plist>
