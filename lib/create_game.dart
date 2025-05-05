@@ -52,6 +52,7 @@ class _CreateGameState extends State<CreateGame> {
           'players': [
             {'name': widget.userName, 'isHost': true, 'isSpy': false},
           ],
+          'wordState': 'INIT',
           'gameStarted': false,
         })
         .catchError((error) {
@@ -123,7 +124,9 @@ class _CreateGameState extends State<CreateGame> {
                               numberOfSpies = selectedItem + 1;
                             });
                           },
-                          children: List<Widget>.generate(5, (int index) {
+                          children: List<Widget>.generate(numberOfPlayers, (
+                            int index,
+                          ) {
                             index = index + 1;
                             return Center(child: Text('$index'));
                           }),

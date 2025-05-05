@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:spy/game_view.dart';
 import 'package:spy/main.dart';
 
 class GameLobby extends StatefulWidget {
@@ -10,6 +11,35 @@ class GameLobby extends StatefulWidget {
 
   @override
   State<GameLobby> createState() => _GameLobbyState();
+
+  static void exitGame(
+    BuildContext context,
+    String gameCode,
+    SharedPreferences prefs,
+  ) {
+    FirebaseFirestore.instance.collection('games').doc(gameCode).delete();
+  }
+
+  static void leaveGame(
+    BuildContext context,
+    String gameCode,
+    String userName,
+    SharedPreferences prefs,
+  ) {
+    FirebaseFirestore.instance.collection('games').doc(gameCode).set({
+      'players': FieldValue.arrayRemove([
+        {'name': userName, 'isHost': false, 'isSpy': false},
+        {'name': userName, 'isHost': false, 'isSpy': true},
+      ]),
+    }, SetOptions(merge: true));
+
+    prefs.remove('gameCode');
+
+    Navigator.pushReplacement(
+      context,
+      CupertinoPageRoute(builder: (context) => const MyApp()),
+    );
+  }
 }
 
 class _GameLobbyState extends State<GameLobby> {
@@ -19,10 +49,11 @@ class _GameLobbyState extends State<GameLobby> {
   bool isHost = false;
 
   Future<bool> userExists(String gameCode, String userName) async {
-    final doc = await FirebaseFirestore.instance
-        .collection('games')
-        .doc(gameCode)
-        .get();
+    final doc =
+        await FirebaseFirestore.instance
+            .collection('games')
+            .doc(gameCode)
+            .get();
 
     if (doc.exists) {
       final players = doc.data()?['players'] as List<dynamic>;
@@ -47,14 +78,11 @@ class _GameLobbyState extends State<GameLobby> {
     } else {
       userExists(gameCode, userName).then((exists) {
         if (!exists) {
-          FirebaseFirestore.instance
-              .collection('games')
-              .doc(gameCode)
-              .update({
-                'players': FieldValue.arrayUnion([
-                  {'name': userName, 'isHost': false, 'isSpy': false},
-                ]),
-              });
+          FirebaseFirestore.instance.collection('games').doc(gameCode).update({
+            'players': FieldValue.arrayUnion([
+              {'name': userName, 'isHost': false, 'isSpy': false},
+            ]),
+          });
         }
       });
     }
@@ -105,6 +133,18 @@ class _GameLobbyState extends State<GameLobby> {
               Navigator.pushReplacement(
                 context,
                 CupertinoPageRoute(builder: (context) => const MyApp()),
+              );
+            });
+          }
+
+          // Check if the game has started
+          if (gameData['gameStarted'] == true) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              Navigator.pushReplacement(
+                context,
+                CupertinoPageRoute(
+                  builder: (context) => GameView(prefs: widget.prefs),
+                ),
               );
             });
           }
@@ -208,10 +248,13 @@ class _GameLobbyState extends State<GameLobby> {
                                       .doc(gameCode)
                                       .update({'numSpies': selectedItem + 1});
                                 },
-                                children: List<Widget>.generate(5, (int index) {
-                                  index = index + 1;
-                                  return Center(child: Text('$index'));
-                                }),
+                                children: List<Widget>.generate(
+                                  gameData['numPlayers'],
+                                  (int index) {
+                                    index = index + 1;
+                                    return Center(child: Text('$index'));
+                                  },
+                                ),
                               ),
                             );
                           },
@@ -281,7 +324,12 @@ class _GameLobbyState extends State<GameLobby> {
                                       ],
                                     ),
                               );
-                            } else {}
+                            } else {
+                              FirebaseFirestore.instance
+                                  .collection('games')
+                                  .doc(gameCode)
+                                  .update({'gameStarted': true});
+                            }
                           },
                         ),
                         SizedBox(height: 15),
@@ -292,58 +340,31 @@ class _GameLobbyState extends State<GameLobby> {
                               return;
                             }
 
-                            FirebaseFirestore.instance
-                                .collection('games')
-                                .doc(gameCode)
-                                .delete();
-
-                            widget.prefs.remove('gameCode');
-
-                            Navigator.pushReplacement(
-                              context,
-                              CupertinoPageRoute(
-                                builder: (context) => const MyApp(),
-                              ),
-                            );
+                            GameLobby.exitGame(context, gameCode, widget.prefs);
                           },
                         ),
                       ],
                     )
-                    : CupertinoButton.filled(
-                      child: Text('Leave Game'),
-                      onPressed: () async {
-                        if (!mounted) {
-                          return;
-                        }
+                    : Column(
+                      children: [
+                        Text('Waiting for host to start the game...'),
+                        SizedBox(height: 15),
+                        CupertinoButton.filled(
+                          child: Text('Leave Game'),
+                          onPressed: () {
+                            if (!mounted) {
+                              return;
+                            }
 
-                        FirebaseFirestore.instance
-                            .collection('games')
-                            .doc(gameCode)
-                            .set({
-                              'players': FieldValue.arrayRemove([
-                                {
-                                  'name': userName,
-                                  'isHost': false,
-                                  'isSpy': false,
-                                },
-                                {
-                                  'name': userName,
-                                  'isHost': false,
-                                  'isSpy': true,
-                                },
-                              ]),
-                            }, SetOptions(merge: true));
-
-                        await widget.prefs.remove('gameCode');
-
-                        Navigator.pushReplacement(
-                          // ignore: use_build_context_synchronously
-                          context,
-                          CupertinoPageRoute(
-                            builder: (context) => const MyApp(),
-                          ),
-                        );
-                      },
+                            GameLobby.leaveGame(
+                              context,
+                              gameCode,
+                              userName,
+                              widget.prefs,
+                            );
+                          },
+                        ),
+                      ],
                     ),
               ],
             ),
