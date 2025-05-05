@@ -4,8 +4,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:spy/main.dart';
 
 class GameLobby extends StatefulWidget {
-  const GameLobby({super.key, required this.prefs});
+  const GameLobby({super.key, required this.prefs, this.createdGame = false});
   final SharedPreferences prefs;
+  final bool createdGame;
 
   @override
   State<GameLobby> createState() => _GameLobbyState();
@@ -16,6 +17,19 @@ class _GameLobbyState extends State<GameLobby> {
   String userName = '';
 
   bool isHost = false;
+
+  Future<bool> userExists(String gameCode, String userName) async {
+    final doc = await FirebaseFirestore.instance
+        .collection('games')
+        .doc(gameCode)
+        .get();
+
+    if (doc.exists) {
+      final players = doc.data()?['players'] as List<dynamic>;
+      return players.any((player) => player['name'] == userName);
+    }
+    return false;
+  }
 
   @override
   void initState() {
@@ -31,18 +45,18 @@ class _GameLobbyState extends State<GameLobby> {
         );
       });
     } else {
-      FirebaseFirestore.instance
-          .collection('games')
-          .doc(gameCode)
-          .update({
-            'players': FieldValue.arrayUnion([
-              {'name': userName, 'isHost': false, 'isSpy': false},
-            ]),
-          })
-          .catchError((error) {
-            // Handle error
-            print('Error adding player: $error');
-          });
+      userExists(gameCode, userName).then((exists) {
+        if (!exists) {
+          FirebaseFirestore.instance
+              .collection('games')
+              .doc(gameCode)
+              .update({
+                'players': FieldValue.arrayUnion([
+                  {'name': userName, 'isHost': false, 'isSpy': false},
+                ]),
+              });
+        }
+      });
     }
   }
 

@@ -50,11 +50,7 @@ class _CreateGameState extends State<CreateGame> {
           'numPlayers': numberOfPlayers,
           'numSpies': numberOfSpies,
           'players': [
-            {
-              'name': widget.userName,
-              'isHost': true,
-              'isSpy': false,
-            }
+            {'name': widget.userName, 'isHost': true, 'isSpy': false},
           ],
           'gameStarted': false,
         })
@@ -156,13 +152,15 @@ class _CreateGameState extends State<CreateGame> {
                 if (!mounted) return;
                 String gameCode = await createGame();
                 await widget.prefs.setString('gameCode', gameCode);
-                
+
                 if (gameCode != 'ERROR') {
                   Navigator.pop(context);
                   Navigator.pushReplacement(
                     context,
                     CupertinoPageRoute(
-                      builder: (context) => GameLobby(prefs: widget.prefs),
+                      builder:
+                          (context) =>
+                              GameLobby(prefs: widget.prefs, createdGame: true),
                     ),
                   );
                 } else {
