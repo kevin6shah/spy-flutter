@@ -239,16 +239,20 @@ class _GameViewState extends State<GameView> {
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              AutoSizeText(
-                                wordState.toUpperCase(),
-                                textAlign: TextAlign.center,
-                                style: const TextStyle(
-                                  fontSize: 75,
-                                  color: CupertinoColors.white,
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 15,
                                 ),
-                                maxLines: 1,
-                                minFontSize: 24,
-                                overflow: TextOverflow.ellipsis,
+                                child: AutoSizeText(
+                                  wordState.toUpperCase().replaceAll(' ', '\n'),
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(
+                                    fontSize: 75,
+                                    color: CupertinoColors.white,
+                                  ),
+                                  maxLines: 2,
+                                  minFontSize: 24,
+                                ),
                               ),
                               SizedBox(height: 20),
                               Text(
