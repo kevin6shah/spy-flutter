@@ -47,6 +47,7 @@ class _GameLobbyState extends State<GameLobby> {
   String userName = '';
 
   List<String>? packs;
+  bool packsLoaded = false;
 
   bool isHost = false;
 
@@ -88,18 +89,19 @@ class _GameLobbyState extends State<GameLobby> {
         }
       });
 
-      FirebaseFirestore.instance.collection('packs').get().then((
-        QuerySnapshot querySnapshot,
-      ) {
-        if (querySnapshot.docs.isNotEmpty) {
-          setState(() {
-            packs =
-                querySnapshot.docs
-                    .map((DocumentSnapshot doc) => doc.id)
-                    .toList();
-          });
-        }
-      });
+      // Only fetch packs if not already loaded
+      if (!packsLoaded) {
+        FirebaseFirestore.instance.collection('packs').get().then((
+          querySnapshot,
+        ) {
+          if (querySnapshot.docs.isNotEmpty) {
+            setState(() {
+              packs = querySnapshot.docs.map((doc) => doc.id).toList();
+              packsLoaded = true;
+            });
+          }
+        });
+      }
     }
   }
 
@@ -231,12 +233,16 @@ class _GameLobbyState extends State<GameLobby> {
                                     useMagnifier: true,
                                     itemExtent: 32.0,
                                     onSelectedItemChanged: (int selectedItem) {
-                                      FirebaseFirestore.instance
-                                          .collection('games')
-                                          .doc(gameCode)
-                                          .update({
-                                            'numPlayers': selectedItem + 3,
-                                          });
+                                      int newNumPlayers = selectedItem + 3;
+                                      if (gameData['numPlayers'] !=
+                                          newNumPlayers) {
+                                        FirebaseFirestore.instance
+                                            .collection('games')
+                                            .doc(gameCode)
+                                            .update({
+                                              'numPlayers': newNumPlayers,
+                                            });
+                                      }
                                     },
                                     scrollController:
                                         FixedExtentScrollController(
