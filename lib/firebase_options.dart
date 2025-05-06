@@ -3,6 +3,7 @@
 import 'package:firebase_core/firebase_core.dart' show FirebaseOptions;
 import 'package:flutter/foundation.dart'
     show defaultTargetPlatform, kIsWeb, TargetPlatform;
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 /// Default [FirebaseOptions] for use with your Firebase apps.
 ///
@@ -49,20 +50,20 @@ class DefaultFirebaseOptions {
     }
   }
 
-  static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyDTCexxbD0LqNGAo1Zl9HFFZKM_NqRPTEs',
-    appId: '1:276762252539:android:61d81e1c8f4e6b304d8c5e',
-    messagingSenderId: '276762252539',
-    projectId: 'spy-flutter-437e0',
-    storageBucket: 'spy-flutter-437e0.firebasestorage.app',
+  static FirebaseOptions get android => FirebaseOptions(
+    apiKey: dotenv.env['ANDROID_API_KEY'] ?? '',
+    appId: dotenv.env['ANDROID_APP_ID'] ?? '',
+    messagingSenderId: dotenv.env['ANDROID_MESSAGING_SENDER_ID'] ?? '',
+    projectId: dotenv.env['ANDROID_PROJECT_ID'] ?? '',
+    storageBucket: dotenv.env['ANDROID_STORAGE_BUCKET'] ?? '',
   );
 
-  static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyApQtks6RzQD5yJXfroHE0KSo5KzNnk-E4',
-    appId: '1:276762252539:ios:de59a376bce2d6114d8c5e',
-    messagingSenderId: '276762252539',
-    projectId: 'spy-flutter-437e0',
-    storageBucket: 'spy-flutter-437e0.firebasestorage.app',
-    iosBundleId: 'com.kevin6shah.spy',
+  static FirebaseOptions get ios => FirebaseOptions(
+    apiKey: dotenv.env['IOS_API_KEY'] ?? '',
+    appId: dotenv.env['IOS_APP_ID'] ?? '',
+    messagingSenderId: dotenv.env['IOS_MESSAGING_SENDER_ID'] ?? '',
+    projectId: dotenv.env['IOS_PROJECT_ID'] ?? '',
+    storageBucket: dotenv.env['IOS_STORAGE_BUCKET'] ?? '',
+    iosBundleId: dotenv.env['IOS_BUNDLE_ID'] ?? '',
   );
 }
