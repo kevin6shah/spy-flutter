@@ -1,6 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:spy/main.dart';
+import 'package:spycast/main.dart';
 
 class Instructions extends StatelessWidget {
   const Instructions({super.key});
@@ -31,7 +31,7 @@ class Instructions extends StatelessWidget {
             children: [
               Center(
                 child: Text(
-                  'How to Play Spy',
+                  'How to Play SpyCast',
                   style: TextStyle(
                     fontSize: 26,
                     fontWeight: FontWeight.bold,

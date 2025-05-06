@@ -3,10 +3,10 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:spy/create_game.dart';
-import 'package:spy/firebase_options.dart';
-import 'package:spy/game_lobby.dart';
-import 'package:spy/instructions.dart';
+import 'package:spycast/create_game.dart';
+import 'package:spycast/firebase_options.dart';
+import 'package:spycast/game_lobby.dart';
+import 'package:spycast/instructions.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -21,7 +21,7 @@ class MyApp extends StatelessWidget {
   // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
-    return MyHomePage(title: 'Spy');
+    return MyHomePage(title: 'SpyCast');
   }
 }
 
@@ -48,6 +48,11 @@ class _MyHomePageState extends State<MyHomePage> {
       if (_prefs!.containsKey('userName')) {
         userName = _prefs!.getString('userName');
       }
+      if (_prefs!.containsKey('brightness')) {
+        _brightness = _prefs!.getString('brightness') == 'dark'
+            ? Brightness.dark
+            : Brightness.light;
+      }
       return prefs;
     });
   }
@@ -56,6 +61,7 @@ class _MyHomePageState extends State<MyHomePage> {
     setState(() {
       _brightness =
           _brightness == Brightness.light ? Brightness.dark : Brightness.light;
+      _prefs!.setString('brightness', _brightness == Brightness.light ? 'light' : 'dark');
     });
   }
 

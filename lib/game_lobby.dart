@@ -1,8 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:spy/game_view.dart';
-import 'package:spy/main.dart';
+import 'package:spycast/game_view.dart';
+import 'package:spycast/main.dart';
 
 class GameLobby extends StatefulWidget {
   const GameLobby({super.key, required this.prefs, this.createdGame = false});

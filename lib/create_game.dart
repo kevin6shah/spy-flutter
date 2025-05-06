@@ -5,8 +5,8 @@ import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:spy/game_lobby.dart';
-import 'package:spy/main.dart';
+import 'package:spycast/game_lobby.dart';
+import 'package:spycast/main.dart';
 
 class CreateGame extends StatefulWidget {
   final String userName;
