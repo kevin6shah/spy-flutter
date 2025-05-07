@@ -125,9 +125,78 @@ class _GameLobbyState extends State<GameLobby> {
     );
   }
 
-  Widget profileCard(String playerName, bool isHost) {
-    return Padding(
-      padding: const EdgeInsets.all(20),
+  Widget profileCard(String playerName, bool isHost, bool isPlayerHost) {
+    return CupertinoButton(
+      onPressed: () {
+        if (isPlayerHost && !isHost) {
+          _showDialog(
+            SizedBox(
+              width: double.infinity,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  Text(
+                    'Transfer host to $playerName?',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.w500),
+                  ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      CupertinoButton(
+                        child: const Text('Cancel'),
+                        onPressed: () {
+                          Navigator.of(context, rootNavigator: true).pop();
+                        },
+                      ),
+                      SizedBox(width: 10),
+                      CupertinoButton.filled(
+                        child: const Text('Transfer'),
+                        onPressed: () async {
+                          // Get current players list
+                          final doc =
+                              await FirebaseFirestore.instance
+                                  .collection('games')
+                                  .doc(gameCode)
+                                  .get();
+                          final players =
+                              (doc.data()?['players'] as List<dynamic>?)
+                                  ?.map((e) => Map<String, dynamic>.from(e))
+                                  .toList() ??
+                              [];
+
+                          // Update isHost for target and current user
+                          final updatedPlayers =
+                              players.map((player) {
+                                if (player['name'] == playerName) {
+                                  return {...player, 'isHost': true};
+                                } else if (player['name'] == userName) {
+                                  return {...player, 'isHost': false};
+                                }
+                                return player;
+                              }).toList();
+
+                          await FirebaseFirestore.instance
+                              .collection('games')
+                              .doc(gameCode)
+                              .update({
+                                'host': playerName,
+                                'players': updatedPlayers,
+                              });
+
+                          if (mounted) {
+                            Navigator.of(context, rootNavigator: true).pop();
+                          }
+                        },
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+      },
       child: Column(
         children: [
           Icon(CupertinoIcons.person, size: 40),
@@ -240,7 +309,11 @@ class _GameLobbyState extends State<GameLobby> {
                                         CupertinoDialogAction(
                                           child: const Text('OK'),
                                           onPressed:
-                                              () => Navigator.of(context).pop(),
+                                              () =>
+                                                  Navigator.of(
+                                                    context,
+                                                    rootNavigator: true,
+                                                  ).pop(),
                                         ),
                                       ],
                                     ),
@@ -472,6 +545,7 @@ class _GameLobbyState extends State<GameLobby> {
                                             (player) => profileCard(
                                               player['name'],
                                               player['isHost'],
+                                              isHost,
                                             ),
                                           )
                                           .toList(),
@@ -518,7 +592,10 @@ class _GameLobbyState extends State<GameLobby> {
                                               CupertinoDialogAction(
                                                 child: const Text('OK'),
                                                 onPressed: () {
-                                                  Navigator.pop(context);
+                                                  Navigator.of(
+                                                    context,
+                                                    rootNavigator: true,
+                                                  ).pop();
                                                 },
                                               ),
                                             ],
