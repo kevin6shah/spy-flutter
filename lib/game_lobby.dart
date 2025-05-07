@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:spycast/game_view.dart';
 import 'package:spycast/main.dart';
@@ -124,6 +125,23 @@ class _GameLobbyState extends State<GameLobby> {
     );
   }
 
+  Widget profileCard(String playerName, bool isHost) {
+    return Padding(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        children: [
+          Icon(CupertinoIcons.person, size: 40),
+          Text(playerName),
+          if (isHost)
+            Text(
+              '(host)',
+              style: TextStyle(fontSize: 12, color: CupertinoColors.systemGrey),
+            ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<DocumentSnapshot>(
@@ -183,13 +201,13 @@ class _GameLobbyState extends State<GameLobby> {
                       .map((e) => e as Map<String, dynamic>)
                       .toList();
 
-              // Aggregate the players into rows of 4
+              // Aggregate the players into rows of 3
               List<List<Map<String, dynamic>>> rows = [];
-              for (int i = 0; i < allPlayers.length; i += 4) {
+              for (int i = 0; i < allPlayers.length; i += 3) {
                 rows.add(
                   allPlayers.sublist(
                     i,
-                    i + 4 > allPlayers.length ? allPlayers.length : i + 4,
+                    i + 3 > allPlayers.length ? allPlayers.length : i + 3,
                   ),
                 );
               }
@@ -206,7 +224,28 @@ class _GameLobbyState extends State<GameLobby> {
                             'Game Code: $gameCode',
                             style: const TextStyle(fontSize: 24),
                           ),
-                          onPressed: () {},
+                          onPressed: () {
+                            // Copy game code to clipboard
+                            Clipboard.setData(ClipboardData(text: gameCode));
+                            // Show a snackbar or toast to indicate success
+                            showCupertinoDialog(
+                              context: context,
+                              builder:
+                                  (context) => CupertinoAlertDialog(
+                                    title: const Text('Copied!'),
+                                    content: const Text(
+                                      'Game code copied to clipboard',
+                                    ),
+                                    actions: [
+                                      CupertinoDialogAction(
+                                        child: const Text('OK'),
+                                        onPressed:
+                                            () => Navigator.of(context).pop(),
+                                      ),
+                                    ],
+                                  ),
+                            );
+                          },
                         ),
                         SizedBox(height: 20),
 
@@ -214,6 +253,50 @@ class _GameLobbyState extends State<GameLobby> {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             CupertinoButton.tinted(
+                              onPressed:
+                                  (!isHost)
+                                      ? null
+                                      : () {
+                                        _showDialog(
+                                          CupertinoPicker(
+                                            magnification: 1.22,
+                                            squeeze: 1.2,
+                                            useMagnifier: true,
+                                            itemExtent: 32.0,
+                                            onSelectedItemChanged: (
+                                              int selectedItem,
+                                            ) {
+                                              int newNumPlayers =
+                                                  selectedItem + 3;
+                                              if (gameData['numPlayers'] !=
+                                                  newNumPlayers) {
+                                                FirebaseFirestore.instance
+                                                    .collection('games')
+                                                    .doc(gameCode)
+                                                    .update({
+                                                      'numPlayers':
+                                                          newNumPlayers,
+                                                    });
+                                              }
+                                            },
+                                            scrollController:
+                                                FixedExtentScrollController(
+                                                  initialItem:
+                                                      gameData['numPlayers'] -
+                                                      3,
+                                                ),
+                                            children: List<Widget>.generate(
+                                              18,
+                                              (int index) {
+                                                index = index + 3;
+                                                return Center(
+                                                  child: Text('$index'),
+                                                );
+                                              },
+                                            ),
+                                          ),
+                                        );
+                                      },
                               child: Row(
                                 children: [
                                   Icon(CupertinoIcons.person_fill, size: 30),
@@ -221,46 +304,11 @@ class _GameLobbyState extends State<GameLobby> {
                                   Text('${gameData['numPlayers']}'),
                                 ],
                               ),
-                              onPressed: () {
-                                if (!isHost) {
-                                  return;
-                                }
-
-                                _showDialog(
-                                  CupertinoPicker(
-                                    magnification: 1.22,
-                                    squeeze: 1.2,
-                                    useMagnifier: true,
-                                    itemExtent: 32.0,
-                                    onSelectedItemChanged: (int selectedItem) {
-                                      int newNumPlayers = selectedItem + 3;
-                                      if (gameData['numPlayers'] !=
-                                          newNumPlayers) {
-                                        FirebaseFirestore.instance
-                                            .collection('games')
-                                            .doc(gameCode)
-                                            .update({
-                                              'numPlayers': newNumPlayers,
-                                            });
-                                      }
-                                    },
-                                    scrollController:
-                                        FixedExtentScrollController(
-                                          initialItem:
-                                              gameData['numPlayers'] - 3,
-                                        ),
-                                    children: List<Widget>.generate(18, (
-                                      int index,
-                                    ) {
-                                      index = index + 3;
-                                      return Center(child: Text('$index'));
-                                    }),
-                                  ),
-                                );
-                              },
                             ),
                             SizedBox(width: 10),
-                            packs == null
+                            (!isHost)
+                                ? SizedBox()
+                                : packs == null
                                 ? CupertinoActivityIndicator()
                                 : CupertinoButton.tinted(
                                   child: Icon(
@@ -268,10 +316,6 @@ class _GameLobbyState extends State<GameLobby> {
                                     size: 30,
                                   ),
                                   onPressed: () {
-                                    if (!isHost) {
-                                      return;
-                                    }
-
                                     _showDialog(
                                       CupertinoPicker(
                                         magnification: 1.22,
@@ -306,7 +350,11 @@ class _GameLobbyState extends State<GameLobby> {
                                             i < packs!.length;
                                             i++
                                           )
-                                            Center(child: Text(packs![i])),
+                                            Center(
+                                              child: Text(
+                                                capitalizeWords(packs![i]),
+                                              ),
+                                            ),
                                         ],
                                       ),
                                     );
@@ -314,6 +362,44 @@ class _GameLobbyState extends State<GameLobby> {
                                 ),
                             SizedBox(width: 10),
                             CupertinoButton.tinted(
+                              onPressed:
+                                  (!isHost)
+                                      ? null
+                                      : () {
+                                        _showDialog(
+                                          CupertinoPicker(
+                                            magnification: 1.22,
+                                            squeeze: 1.2,
+                                            useMagnifier: true,
+                                            itemExtent: 32.0,
+                                            scrollController:
+                                                FixedExtentScrollController(
+                                                  initialItem:
+                                                      gameData['numSpies'] - 1,
+                                                ),
+                                            onSelectedItemChanged: (
+                                              int selectedItem,
+                                            ) {
+                                              FirebaseFirestore.instance
+                                                  .collection('games')
+                                                  .doc(gameCode)
+                                                  .update({
+                                                    'numSpies':
+                                                        selectedItem + 1,
+                                                  });
+                                            },
+                                            children: List<Widget>.generate(
+                                              gameData['numPlayers'] - 1,
+                                              (int index) {
+                                                index = index + 1;
+                                                return Center(
+                                                  child: Text('$index'),
+                                                );
+                                              },
+                                            ),
+                                          ),
+                                        );
+                                      },
                               child: Row(
                                 children: [
                                   Text('${gameData['numSpies']}'),
@@ -321,41 +407,15 @@ class _GameLobbyState extends State<GameLobby> {
                                   Icon(CupertinoIcons.eye_slash, size: 30),
                                 ],
                               ),
-                              onPressed: () {
-                                if (!isHost) {
-                                  return;
-                                }
-
-                                _showDialog(
-                                  CupertinoPicker(
-                                    magnification: 1.22,
-                                    squeeze: 1.2,
-                                    useMagnifier: true,
-                                    itemExtent: 32.0,
-                                    scrollController:
-                                        FixedExtentScrollController(
-                                          initialItem: gameData['numSpies'] - 1,
-                                        ),
-                                    onSelectedItemChanged: (int selectedItem) {
-                                      FirebaseFirestore.instance
-                                          .collection('games')
-                                          .doc(gameCode)
-                                          .update({
-                                            'numSpies': selectedItem + 1,
-                                          });
-                                    },
-                                    children: List<Widget>.generate(
-                                      gameData['numPlayers'],
-                                      (int index) {
-                                        index = index + 1;
-                                        return Center(child: Text('$index'));
-                                      },
-                                    ),
-                                  ),
-                                );
-                              },
                             ),
                           ],
+                        ),
+
+                        SizedBox(height: 20),
+
+                        Text(
+                          'Pack: ${capitalizeWords((gameData['pack'] ?? '') as String)}',
+                          style: const TextStyle(fontSize: 16),
                         ),
 
                         SizedBox(height: 30),
@@ -374,7 +434,6 @@ class _GameLobbyState extends State<GameLobby> {
                                     rows[index]
                                         .map(
                                           (player) => profileCard(
-                                            context,
                                             player['name'],
                                             player['isHost'],
                                           ),
@@ -464,10 +523,18 @@ class _GameLobbyState extends State<GameLobby> {
                         )
                         : Column(
                           children: [
-                            Text('Waiting for host to start the game...'),
+                            _WaitingDots(),
                             SizedBox(height: 15),
                             CupertinoButton.filled(
-                              child: Text('Leave Game'),
+                              child: Text(
+                                'Leave Game',
+                                style: TextStyle(
+                                  color:
+                                      ThemeUtils.isLightMode(context)
+                                          ? CupertinoColors.white
+                                          : CupertinoColors.black,
+                                ),
+                              ),
                               onPressed: () {
                                 if (!mounted) {
                                   return;
@@ -494,21 +561,55 @@ class _GameLobbyState extends State<GameLobby> {
   }
 }
 
-Widget profileCard(BuildContext context, String playerName, bool isHost) {
-  return CupertinoButton(
-    onPressed: () {
-      // Handle button press
-    },
-    child: Column(
-      children: [
-        Icon(CupertinoIcons.person, size: 40),
-        Text(playerName),
-        if (isHost)
-          Text(
-            '(host)',
-            style: TextStyle(fontSize: 12, color: CupertinoColors.systemGrey),
-          ),
-      ],
-    ),
-  );
+String capitalizeWords(String input) {
+  return input
+      .split(' ')
+      .map(
+        (word) =>
+            word.isNotEmpty
+                ? word[0].toUpperCase() + word.substring(1).toLowerCase()
+                : '',
+      )
+      .join(' ');
+}
+
+class _WaitingDots extends StatefulWidget {
+  const _WaitingDots();
+
+  @override
+  State<_WaitingDots> createState() => _WaitingDotsState();
+}
+
+class _WaitingDotsState extends State<_WaitingDots> {
+  int dotCount = 0;
+  bool _disposed = false; // Add this flag
+
+  @override
+  void initState() {
+    super.initState();
+    _loopDots();
+  }
+
+  @override
+  void dispose() {
+    _disposed = true; // Set flag to true
+    super.dispose();
+  }
+
+  void _loopDots() async {
+    while (mounted && !_disposed) {
+      await Future.delayed(const Duration(milliseconds: 500));
+      if (mounted && !_disposed) {
+        setState(() => dotCount = (dotCount + 1) % 4);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      'waiting for host to start the game${'.' * dotCount}',
+      style: const TextStyle(fontSize: 16),
+    );
+  }
 }

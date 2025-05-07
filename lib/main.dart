@@ -49,9 +49,12 @@ class _MyHomePageState extends State<MyHomePage> {
         userName = _prefs!.getString('userName');
       }
       if (_prefs!.containsKey('brightness')) {
-        _brightness = _prefs!.getString('brightness') == 'dark'
-            ? Brightness.dark
-            : Brightness.light;
+        setState(() {
+          _brightness =
+              _prefs!.getString('brightness') == 'dark'
+                  ? Brightness.dark
+                  : Brightness.light;
+        });
       }
       return prefs;
     });
@@ -61,7 +64,10 @@ class _MyHomePageState extends State<MyHomePage> {
     setState(() {
       _brightness =
           _brightness == Brightness.light ? Brightness.dark : Brightness.light;
-      _prefs!.setString('brightness', _brightness == Brightness.light ? 'light' : 'dark');
+      _prefs!.setString(
+        'brightness',
+        _brightness == Brightness.light ? 'light' : 'dark',
+      );
     });
   }
 
@@ -110,7 +116,7 @@ class _MyHomePageState extends State<MyHomePage> {
     return true;
   }
 
-  Future<bool> checkUserName(String userName, String gameCode) async {
+  Future<(int, int)> checkUserName(String userName, String gameCode) async {
     DocumentSnapshot documentSnapshot =
         await FirebaseFirestore.instance
             .collection('games')
@@ -122,9 +128,11 @@ class _MyHomePageState extends State<MyHomePage> {
       List<dynamic> players = data['players'] ?? [];
       List<String> playerNames =
           players.map((e) => e['name'].toString()).toList();
-      return !playerNames.contains(userName);
+      if (!playerNames.contains(userName)) {
+        return (playerNames.length, data['numPlayers'] as int);
+      }
     }
-    return false;
+    return (0, 0);
   }
 
   void joinGameLobby(BuildContext context, String value) async {
@@ -133,7 +141,8 @@ class _MyHomePageState extends State<MyHomePage> {
     }
 
     if (validateGameCode(value) && await checkGameCode(value)) {
-      if (await checkUserName(userName!, value)) {
+      (int, int) players = await checkUserName(userName!, value);
+      if (players.$1 < players.$2) {
         await _prefs!.setString('gameCode', value);
         // ignore: use_build_context_synchronously
         Navigator.pop(context);
@@ -143,8 +152,16 @@ class _MyHomePageState extends State<MyHomePage> {
           CupertinoPageRoute(builder: (context) => GameLobby(prefs: _prefs!)),
         );
       } else {
-        // ignore: use_build_context_synchronously
-        showErrorDialog(context, 'Username is already taken');
+        if (players == (0, 0)) {
+          // ignore: use_build_context_synchronously
+          showErrorDialog(context, 'Username is already taken');
+        } else {
+          showErrorDialog(
+            // ignore: use_build_context_synchronously
+            context,
+            'Game is full. Ask the host to increase the number of players.',
+          );
+        }
       }
     } else {
       // ignore: use_build_context_synchronously
@@ -185,12 +202,12 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 
-  void _setUserName(context) {
+  Future<BuildContext> _setUserName(context) async {
     final TextEditingController controller = TextEditingController(
       text: userName ?? '',
     );
 
-    showCupertinoDialog(
+    await showCupertinoDialog(
       context: context,
       builder: (context) {
         return CupertinoAlertDialog(
@@ -225,6 +242,8 @@ class _MyHomePageState extends State<MyHomePage> {
         );
       },
     );
+
+    return context;
   }
 
   @override
