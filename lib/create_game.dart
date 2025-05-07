@@ -19,9 +19,11 @@ class CreateGame extends StatefulWidget {
 
 class _CreateGameState extends State<CreateGame> {
   int numberOfPlayers = 3;
+  int numberOfRounds = 3;
   int numberOfSpies = 1;
   List<String>? packs;
   int packIdx = 0;
+  int timeLimit = 3;
 
   @override
   void initState() {
@@ -68,6 +70,8 @@ class _CreateGameState extends State<CreateGame> {
           'pack': packs![packIdx],
           'numPlayers': numberOfPlayers,
           'numSpies': numberOfSpies,
+          'numRounds': numberOfRounds,
+          'timeLimit': timeLimit,
           'players': [
             {'name': widget.userName, 'isHost': true, 'isSpy': false},
           ],
@@ -103,74 +107,10 @@ class _CreateGameState extends State<CreateGame> {
           children: <Widget>[
             Column(
               children: [
-                GestureDetector(
-                  onTap:
-                      () => _showDialog(
-                        CupertinoPicker(
-                          magnification: 1.22,
-                          squeeze: 1.2,
-                          useMagnifier: true,
-                          itemExtent: 32.0,
-                          scrollController: FixedExtentScrollController(
-                            initialItem: numberOfPlayers - 3,
-                          ),
-                          onSelectedItemChanged: (int selectedItem) {
-                            setState(() {
-                              numberOfPlayers = selectedItem + 3;
-                              numberOfSpies = min(
-                                numberOfSpies,
-                                numberOfPlayers,
-                              );
-                            });
-                          },
-                          children: List<Widget>.generate(18, (int index) {
-                            index = index + 3;
-                            return Center(child: Text('$index'));
-                          }),
-                        ),
-                      ),
-                  child: Column(
-                    children: [
-                      Icon(CupertinoIcons.person_3, size: 100),
-                      Text('Players: $numberOfPlayers'),
-                    ],
-                  ),
-                ),
-                SizedBox(height: 20),
-                GestureDetector(
-                  onTap:
-                      () => _showDialog(
-                        CupertinoPicker(
-                          magnification: 1.22,
-                          squeeze: 1.2,
-                          useMagnifier: true,
-                          itemExtent: 32.0,
-                          scrollController: FixedExtentScrollController(
-                            initialItem: numberOfSpies - 1,
-                          ),
-                          onSelectedItemChanged: (int selectedItem) {
-                            setState(() {
-                              numberOfSpies = selectedItem + 1;
-                            });
-                          },
-                          children: List<Widget>.generate(numberOfPlayers, (
-                            int index,
-                          ) {
-                            index = index + 1;
-                            return Center(child: Text('$index'));
-                          }),
-                        ),
-                      ),
-                  child: Column(
-                    children: [
-                      Icon(CupertinoIcons.eye_slash, size: 100),
-                      Text('Spies: $numberOfSpies'),
-                    ],
-                  ),
-                ),
-                SizedBox(height: 20),
-                packs != null
-                    ? GestureDetector(
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    GestureDetector(
                       onTap:
                           () => _showDialog(
                             CupertinoPicker(
@@ -179,27 +119,168 @@ class _CreateGameState extends State<CreateGame> {
                               useMagnifier: true,
                               itemExtent: 32.0,
                               scrollController: FixedExtentScrollController(
-                                initialItem: packIdx,
+                                initialItem: numberOfPlayers - 3,
                               ),
                               onSelectedItemChanged: (int selectedItem) {
                                 setState(() {
-                                  packIdx = selectedItem;
+                                  numberOfPlayers = selectedItem + 3;
+                                  numberOfSpies = min(
+                                    numberOfSpies,
+                                    numberOfPlayers,
+                                  );
                                 });
                               },
-                              children: [
-                                for (int i = 0; i < packs!.length; i++)
-                                  Center(child: Text(packs![i])),
-                              ],
+                              children: List<Widget>.generate(18, (int index) {
+                                index = index + 3;
+                                return Center(child: Text('$index'));
+                              }),
                             ),
                           ),
                       child: Column(
                         children: [
-                          Icon(CupertinoIcons.square_list, size: 100),
-                          Text('Pack: ${packs![packIdx]}'),
+                          Icon(CupertinoIcons.person_3, size: 100),
+                          Text('Players: $numberOfPlayers'),
                         ],
                       ),
-                    )
-                    : CupertinoActivityIndicator(),
+                    ),
+                    GestureDetector(
+                      onTap:
+                          () => _showDialog(
+                            CupertinoPicker(
+                              magnification: 1.22,
+                              squeeze: 1.2,
+                              useMagnifier: true,
+                              itemExtent: 32.0,
+                              scrollController: FixedExtentScrollController(
+                                initialItem: numberOfSpies - 1,
+                              ),
+                              onSelectedItemChanged: (int selectedItem) {
+                                setState(() {
+                                  numberOfSpies = selectedItem + 1;
+                                });
+                              },
+                              children: List<Widget>.generate(numberOfPlayers, (
+                                int index,
+                              ) {
+                                index = index + 1;
+                                return Center(child: Text('$index'));
+                              }),
+                            ),
+                          ),
+                      child: Column(
+                        children: [
+                          Icon(CupertinoIcons.eye_slash, size: 100),
+                          Text('Spies: $numberOfSpies'),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 30),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    packs != null
+                        ? GestureDetector(
+                          onTap:
+                              () => _showDialog(
+                                CupertinoPicker(
+                                  magnification: 1.22,
+                                  squeeze: 1.2,
+                                  useMagnifier: true,
+                                  itemExtent: 32.0,
+                                  scrollController: FixedExtentScrollController(
+                                    initialItem: packIdx,
+                                  ),
+                                  onSelectedItemChanged: (int selectedItem) {
+                                    setState(() {
+                                      packIdx = selectedItem;
+                                    });
+                                  },
+                                  children: [
+                                    for (int i = 0; i < packs!.length; i++)
+                                      Center(
+                                        child: Text(capitalizeWords(packs![i])),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                          child: Column(
+                            children: [
+                              Icon(CupertinoIcons.square_list, size: 100),
+                              Text('Pack: ${capitalizeWords(packs![packIdx])}'),
+                            ],
+                          ),
+                        )
+                        : CupertinoActivityIndicator(),
+                    GestureDetector(
+                      onTap:
+                          () => _showDialog(
+                            CupertinoPicker(
+                              magnification: 1.22,
+                              squeeze: 1.2,
+                              useMagnifier: true,
+                              itemExtent: 32.0,
+                              scrollController: FixedExtentScrollController(
+                                initialItem: 0,
+                              ),
+                              onSelectedItemChanged: (int selectedItem) {
+                                setState(() {
+                                  numberOfRounds = [3, 5, 10][selectedItem];
+                                });
+                              },
+                              children:
+                                  [3, 5, 10]
+                                      .map(
+                                        (rounds) =>
+                                            Center(child: Text('$rounds')),
+                                      )
+                                      .toList(),
+                            ),
+                          ),
+                      child: Column(
+                        children: [
+                          Icon(CupertinoIcons.repeat, size: 100),
+                          Text('Rounds: $numberOfRounds'),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 50),
+                GestureDetector(
+                  onTap:
+                      () => _showDialog(
+                        CupertinoPicker(
+                          magnification: 1.22,
+                          squeeze: 1.2,
+                          useMagnifier: true,
+                          itemExtent: 32.0,
+                          scrollController: FixedExtentScrollController(
+                            initialItem: 0,
+                          ),
+                          onSelectedItemChanged: (int selectedItem) {
+                            setState(() {
+                              timeLimit = [3, 5, 7, 10][selectedItem];
+                            });
+                          },
+                          children:
+                              [3, 5, 7, 10]
+                                  .map(
+                                    (time) => Center(child: Text('$time min')),
+                                  )
+                                  .toList(),
+                        ),
+                      ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(CupertinoIcons.timer, size: 30),
+                      SizedBox(width: 10),
+                      Text('Discussion Time Limit: $timeLimit min'),
+                    ],
+                  ),
+                ),
               ],
             ),
             CupertinoButton.filled(

@@ -212,345 +212,380 @@ class _GameLobbyState extends State<GameLobby> {
                 );
               }
 
-              return Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    Column(
-                      children: [
-                        SizedBox(height: 30),
-                        CupertinoButton.tinted(
-                          child: Text(
-                            'Game Code: $gameCode',
-                            style: const TextStyle(fontSize: 24),
-                          ),
-                          onPressed: () {
-                            // Copy game code to clipboard
-                            Clipboard.setData(ClipboardData(text: gameCode));
-                            // Show a snackbar or toast to indicate success
-                            showCupertinoDialog(
-                              context: context,
-                              builder:
-                                  (context) => CupertinoAlertDialog(
-                                    title: const Text('Copied!'),
-                                    content: const Text(
-                                      'Game code copied to clipboard',
-                                    ),
-                                    actions: [
-                                      CupertinoDialogAction(
-                                        child: const Text('OK'),
-                                        onPressed:
-                                            () => Navigator.of(context).pop(),
+              return SafeArea(
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      Column(
+                        children: [
+                          CupertinoButton.tinted(
+                            child: Text(
+                              'Game Code: $gameCode',
+                              style: const TextStyle(fontSize: 24),
+                            ),
+                            onPressed: () {
+                              // Copy game code to clipboard
+                              Clipboard.setData(ClipboardData(text: gameCode));
+                              // Show a snackbar or toast to indicate success
+                              showCupertinoDialog(
+                                context: context,
+                                builder:
+                                    (context) => CupertinoAlertDialog(
+                                      title: const Text('Copied!'),
+                                      content: const Text(
+                                        'Game code copied to clipboard',
                                       ),
-                                    ],
-                                  ),
-                            );
-                          },
-                        ),
-                        SizedBox(height: 20),
+                                      actions: [
+                                        CupertinoDialogAction(
+                                          child: const Text('OK'),
+                                          onPressed:
+                                              () => Navigator.of(context).pop(),
+                                        ),
+                                      ],
+                                    ),
+                              );
+                            },
+                          ),
+                          SizedBox(height: 20),
 
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            CupertinoButton.tinted(
-                              onPressed:
-                                  (!isHost)
-                                      ? null
-                                      : () {
-                                        _showDialog(
-                                          CupertinoPicker(
-                                            magnification: 1.22,
-                                            squeeze: 1.2,
-                                            useMagnifier: true,
-                                            itemExtent: 32.0,
-                                            onSelectedItemChanged: (
-                                              int selectedItem,
-                                            ) {
-                                              int newNumPlayers =
-                                                  selectedItem + 3;
-                                              if (gameData['numPlayers'] !=
-                                                  newNumPlayers) {
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              CupertinoButton.tinted(
+                                onPressed:
+                                    (!isHost)
+                                        ? null
+                                        : () {
+                                          _showDialog(
+                                            CupertinoPicker(
+                                              magnification: 1.22,
+                                              squeeze: 1.2,
+                                              useMagnifier: true,
+                                              itemExtent: 32.0,
+                                              onSelectedItemChanged: (
+                                                int selectedItem,
+                                              ) {
+                                                int newNumPlayers =
+                                                    selectedItem + 3;
+                                                if (gameData['numPlayers'] !=
+                                                    newNumPlayers) {
+                                                  FirebaseFirestore.instance
+                                                      .collection('games')
+                                                      .doc(gameCode)
+                                                      .update({
+                                                        'numPlayers':
+                                                            newNumPlayers,
+                                                      });
+                                                }
+                                              },
+                                              scrollController:
+                                                  FixedExtentScrollController(
+                                                    initialItem:
+                                                        gameData['numPlayers'] -
+                                                        3,
+                                                  ),
+                                              children: List<Widget>.generate(
+                                                18,
+                                                (int index) {
+                                                  index = index + 3;
+                                                  return Center(
+                                                    child: Text('$index'),
+                                                  );
+                                                },
+                                              ),
+                                            ),
+                                          );
+                                        },
+                                child: Row(
+                                  children: [
+                                    Icon(CupertinoIcons.person_fill, size: 30),
+                                    SizedBox(width: 10),
+                                    Text('${gameData['numPlayers']}'),
+                                  ],
+                                ),
+                              ),
+                              SizedBox(width: 10),
+                              (!isHost)
+                                  ? SizedBox()
+                                  : packs == null
+                                  ? CupertinoActivityIndicator()
+                                  : CupertinoButton.tinted(
+                                    child: Icon(
+                                      CupertinoIcons.square_list,
+                                      size: 30,
+                                    ),
+                                    onPressed: () {
+                                      _showDialog(
+                                        CupertinoPicker(
+                                          magnification: 1.22,
+                                          squeeze: 1.2,
+                                          useMagnifier: true,
+                                          itemExtent: 32.0,
+                                          onSelectedItemChanged: (
+                                            int selectedItem,
+                                          ) {
+                                            FirebaseFirestore.instance
+                                                .collection('games')
+                                                .doc(gameCode)
+                                                .update({
+                                                  'pack': packs![selectedItem],
+                                                });
+                                          },
+                                          scrollController:
+                                              rows
+                                                  .map(
+                                                    (row) =>
+                                                        FixedExtentScrollController(
+                                                          initialItem: packs!
+                                                              .indexOf(
+                                                                gameData['pack'],
+                                                              ),
+                                                        ),
+                                                  )
+                                                  .toList()[0],
+                                          children: [
+                                            for (
+                                              int i = 0;
+                                              i < packs!.length;
+                                              i++
+                                            )
+                                              Center(
+                                                child: Text(
+                                                  capitalizeWords(packs![i]),
+                                                ),
+                                              ),
+                                          ],
+                                        ),
+                                      );
+                                    },
+                                  ),
+                              SizedBox(width: 10),
+                              CupertinoButton.tinted(
+                                onPressed:
+                                    (!isHost)
+                                        ? null
+                                        : () {
+                                          _showDialog(
+                                            CupertinoPicker(
+                                              magnification: 1.22,
+                                              squeeze: 1.2,
+                                              useMagnifier: true,
+                                              itemExtent: 32.0,
+                                              scrollController:
+                                                  FixedExtentScrollController(
+                                                    initialItem:
+                                                        gameData['numSpies'] -
+                                                        1,
+                                                  ),
+                                              onSelectedItemChanged: (
+                                                int selectedItem,
+                                              ) {
                                                 FirebaseFirestore.instance
                                                     .collection('games')
                                                     .doc(gameCode)
                                                     .update({
-                                                      'numPlayers':
-                                                          newNumPlayers,
+                                                      'numSpies':
+                                                          selectedItem + 1,
                                                     });
-                                              }
-                                            },
-                                            scrollController:
-                                                FixedExtentScrollController(
-                                                  initialItem:
-                                                      gameData['numPlayers'] -
-                                                      3,
-                                                ),
-                                            children: List<Widget>.generate(
-                                              18,
-                                              (int index) {
-                                                index = index + 3;
-                                                return Center(
-                                                  child: Text('$index'),
-                                                );
                                               },
-                                            ),
-                                          ),
-                                        );
-                                      },
-                              child: Row(
-                                children: [
-                                  Icon(CupertinoIcons.person_fill, size: 30),
-                                  SizedBox(width: 10),
-                                  Text('${gameData['numPlayers']}'),
-                                ],
-                              ),
-                            ),
-                            SizedBox(width: 10),
-                            (!isHost)
-                                ? SizedBox()
-                                : packs == null
-                                ? CupertinoActivityIndicator()
-                                : CupertinoButton.tinted(
-                                  child: Icon(
-                                    CupertinoIcons.square_list,
-                                    size: 30,
-                                  ),
-                                  onPressed: () {
-                                    _showDialog(
-                                      CupertinoPicker(
-                                        magnification: 1.22,
-                                        squeeze: 1.2,
-                                        useMagnifier: true,
-                                        itemExtent: 32.0,
-                                        onSelectedItemChanged: (
-                                          int selectedItem,
-                                        ) {
-                                          FirebaseFirestore.instance
-                                              .collection('games')
-                                              .doc(gameCode)
-                                              .update({
-                                                'pack': packs![selectedItem],
-                                              });
-                                        },
-                                        scrollController:
-                                            rows
-                                                .map(
-                                                  (row) =>
-                                                      FixedExtentScrollController(
-                                                        initialItem: packs!
-                                                            .indexOf(
-                                                              gameData['pack'],
-                                                            ),
-                                                      ),
-                                                )
-                                                .toList()[0],
-                                        children: [
-                                          for (
-                                            int i = 0;
-                                            i < packs!.length;
-                                            i++
-                                          )
-                                            Center(
-                                              child: Text(
-                                                capitalizeWords(packs![i]),
+                                              children: List<Widget>.generate(
+                                                gameData['numPlayers'] - 1,
+                                                (int index) {
+                                                  index = index + 1;
+                                                  return Center(
+                                                    child: Text('$index'),
+                                                  );
+                                                },
                                               ),
                                             ),
-                                        ],
-                                      ),
-                                    );
-                                  },
+                                          );
+                                        },
+                                child: Row(
+                                  children: [
+                                    Text('${gameData['numSpies']}'),
+                                    SizedBox(width: 10),
+                                    Icon(CupertinoIcons.eye_slash, size: 30),
+                                  ],
                                 ),
-                            SizedBox(width: 10),
-                            CupertinoButton.tinted(
-                              onPressed:
-                                  (!isHost)
-                                      ? null
-                                      : () {
-                                        _showDialog(
-                                          CupertinoPicker(
-                                            magnification: 1.22,
-                                            squeeze: 1.2,
-                                            useMagnifier: true,
-                                            itemExtent: 32.0,
-                                            scrollController:
-                                                FixedExtentScrollController(
-                                                  initialItem:
-                                                      gameData['numSpies'] - 1,
-                                                ),
-                                            onSelectedItemChanged: (
-                                              int selectedItem,
-                                            ) {
-                                              FirebaseFirestore.instance
-                                                  .collection('games')
-                                                  .doc(gameCode)
-                                                  .update({
-                                                    'numSpies':
-                                                        selectedItem + 1,
-                                                  });
-                                            },
-                                            children: List<Widget>.generate(
-                                              gameData['numPlayers'] - 1,
-                                              (int index) {
-                                                index = index + 1;
-                                                return Center(
-                                                  child: Text('$index'),
-                                                );
-                                              },
-                                            ),
-                                          ),
-                                        );
-                                      },
-                              child: Row(
+                              ),
+                            ],
+                          ),
+
+                          SizedBox(height: 20),
+
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceAround,
+                            children: [
+                              Row(
                                 children: [
-                                  Text('${gameData['numSpies']}'),
-                                  SizedBox(width: 10),
-                                  Icon(CupertinoIcons.eye_slash, size: 30),
+                                  Text(
+                                    '${gameData['numRounds']} Rounds: ',
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  Text(
+                                    '${gameData['timeLimit']} mins',
+                                    style: const TextStyle(fontSize: 15),
+                                  ),
                                 ],
                               ),
-                            ),
-                          ],
-                        ),
-
-                        SizedBox(height: 20),
-
-                        Text(
-                          'Pack: ${capitalizeWords((gameData['pack'] ?? '') as String)}',
-                          style: const TextStyle(fontSize: 16),
-                        ),
-
-                        SizedBox(height: 30),
-
-                        SizedBox(
-                          height: 300,
-                          child: ListView.builder(
-                            padding: EdgeInsets.zero,
-                            physics: const BouncingScrollPhysics(),
-                            itemCount: rows.length,
-                            itemBuilder: (context, index) {
-                              return Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children:
-                                    rows[index]
-                                        .map(
-                                          (player) => profileCard(
-                                            player['name'],
-                                            player['isHost'],
-                                          ),
-                                        )
-                                        .toList(),
-                              );
-                            },
+                              Row(
+                                children: [
+                                  Text(
+                                    'Pack: ',
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  Text(
+                                    capitalizeWords(
+                                      (gameData['pack'] ?? '') as String,
+                                    ),
+                                    style: const TextStyle(fontSize: 16),
+                                  ),
+                                ],
+                              ),
+                            ],
                           ),
-                        ),
-                      ],
-                    ),
-                    isHost
-                        ? Column(
-                          children: [
-                            CupertinoButton.tinted(
-                              color: CupertinoColors.systemFill,
-                              child: Text(
-                                'Start Game',
-                                style: TextStyle(
-                                  color:
-                                      ThemeUtils.isLightMode(context)
-                                          ? (allPlayers.length <
-                                                  gameData['numPlayers'])
-                                              ? CupertinoColors.inactiveGray
-                                              : CupertinoColors.label
-                                          : (allPlayers.length <
-                                              gameData['numPlayers'])
-                                          ? CupertinoColors.inactiveGray
-                                          : CupertinoColors.white,
-                                ),
-                              ),
-                              onPressed: () {
-                                if (allPlayers.length <
-                                    gameData['numPlayers']) {
-                                  showCupertinoDialog(
-                                    context: context,
-                                    builder:
-                                        (context) => CupertinoAlertDialog(
-                                          title: const Text(
-                                            'Not enough players',
-                                          ),
-                                          content: const Text(
-                                            'Please wait for more players to join.',
-                                          ),
-                                          actions: [
-                                            CupertinoDialogAction(
-                                              child: const Text('OK'),
-                                              onPressed: () {
-                                                Navigator.pop(context);
-                                              },
+
+                          SizedBox(height: 30),
+
+                          SizedBox(
+                            height: 300,
+                            child: ListView.builder(
+                              padding: EdgeInsets.zero,
+                              physics: const BouncingScrollPhysics(),
+                              itemCount: rows.length,
+                              itemBuilder: (context, index) {
+                                return Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children:
+                                      rows[index]
+                                          .map(
+                                            (player) => profileCard(
+                                              player['name'],
+                                              player['isHost'],
                                             ),
-                                          ],
-                                        ),
+                                          )
+                                          .toList(),
+                                );
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                      isHost
+                          ? Column(
+                            children: [
+                              CupertinoButton.tinted(
+                                color: CupertinoColors.systemFill,
+                                child: Text(
+                                  'Start Game',
+                                  style: TextStyle(
+                                    color:
+                                        ThemeUtils.isLightMode(context)
+                                            ? (allPlayers.length <
+                                                    gameData['numPlayers'])
+                                                ? CupertinoColors.inactiveGray
+                                                : CupertinoColors.label
+                                            : (allPlayers.length <
+                                                gameData['numPlayers'])
+                                            ? CupertinoColors.inactiveGray
+                                            : CupertinoColors.white,
+                                  ),
+                                ),
+                                onPressed: () {
+                                  if (allPlayers.length <
+                                      gameData['numPlayers']) {
+                                    showCupertinoDialog(
+                                      context: context,
+                                      builder:
+                                          (context) => CupertinoAlertDialog(
+                                            title: const Text(
+                                              'Not enough players',
+                                            ),
+                                            content: const Text(
+                                              'Please wait for more players to join.',
+                                            ),
+                                            actions: [
+                                              CupertinoDialogAction(
+                                                child: const Text('OK'),
+                                                onPressed: () {
+                                                  Navigator.pop(context);
+                                                },
+                                              ),
+                                            ],
+                                          ),
+                                    );
+                                  } else {
+                                    FirebaseFirestore.instance
+                                        .collection('games')
+                                        .doc(gameCode)
+                                        .update({'gameStarted': true});
+                                  }
+                                },
+                              ),
+                              SizedBox(height: 15),
+                              CupertinoButton.filled(
+                                child: Text(
+                                  'Exit Game',
+                                  style: TextStyle(
+                                    color:
+                                        ThemeUtils.isLightMode(context)
+                                            ? CupertinoColors.white
+                                            : CupertinoColors.black,
+                                  ),
+                                ),
+                                onPressed: () {
+                                  if (!mounted) {
+                                    return;
+                                  }
+
+                                  GameLobby.exitGame(
+                                    context,
+                                    gameCode,
+                                    widget.prefs,
                                   );
-                                } else {
-                                  FirebaseFirestore.instance
-                                      .collection('games')
-                                      .doc(gameCode)
-                                      .update({'gameStarted': true});
-                                }
-                              },
-                            ),
-                            SizedBox(height: 15),
-                            CupertinoButton.filled(
-                              child: Text(
-                                'Exit Game',
-                                style: TextStyle(
-                                  color:
-                                      ThemeUtils.isLightMode(context)
-                                          ? CupertinoColors.white
-                                          : CupertinoColors.black,
-                                ),
+                                },
                               ),
-                              onPressed: () {
-                                if (!mounted) {
-                                  return;
-                                }
-
-                                GameLobby.exitGame(
-                                  context,
-                                  gameCode,
-                                  widget.prefs,
-                                );
-                              },
-                            ),
-                          ],
-                        )
-                        : Column(
-                          children: [
-                            _WaitingDots(),
-                            SizedBox(height: 15),
-                            CupertinoButton.filled(
-                              child: Text(
-                                'Leave Game',
-                                style: TextStyle(
-                                  color:
-                                      ThemeUtils.isLightMode(context)
-                                          ? CupertinoColors.white
-                                          : CupertinoColors.black,
+                            ],
+                          )
+                          : Column(
+                            children: [
+                              _WaitingDots(),
+                              SizedBox(height: 15),
+                              CupertinoButton.filled(
+                                child: Text(
+                                  'Leave Game',
+                                  style: TextStyle(
+                                    color:
+                                        ThemeUtils.isLightMode(context)
+                                            ? CupertinoColors.white
+                                            : CupertinoColors.black,
+                                  ),
                                 ),
-                              ),
-                              onPressed: () {
-                                if (!mounted) {
-                                  return;
-                                }
+                                onPressed: () {
+                                  if (!mounted) {
+                                    return;
+                                  }
 
-                                GameLobby.leaveGame(
-                                  context,
-                                  gameCode,
-                                  userName,
-                                  widget.prefs,
-                                );
-                              },
-                            ),
-                          ],
-                        ),
-                  ],
+                                  GameLobby.leaveGame(
+                                    context,
+                                    gameCode,
+                                    userName,
+                                    widget.prefs,
+                                  );
+                                },
+                              ),
+                            ],
+                          ),
+                    ],
+                  ),
                 ),
               );
             },
