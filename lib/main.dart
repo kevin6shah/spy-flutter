@@ -249,7 +249,7 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   Widget build(BuildContext context) {
     return CupertinoApp(
-      title: 'Spy',
+      title: 'SpyCast',
       theme: CupertinoThemeData(
         brightness: _brightness,
         primaryColor:

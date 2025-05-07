@@ -151,7 +151,15 @@ class _GameLobbyState extends State<GameLobby> {
                       ),
                       SizedBox(width: 10),
                       CupertinoButton.filled(
-                        child: const Text('Transfer'),
+                        child: Text(
+                          'Transfer',
+                          style: TextStyle(
+                            color:
+                                ThemeUtils.isLightMode(context)
+                                    ? CupertinoColors.white
+                                    : CupertinoColors.black,
+                          ),
+                        ),
                         onPressed: () async {
                           // Get current players list
                           final doc =
