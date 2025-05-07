@@ -30,8 +30,11 @@ class _GameViewState extends State<GameView> {
   int countdown = 5;
   Timer? countdownTimer;
 
-  int wordTimerCountdown = 5;
+  int wordTimerCountdown = 1;
   Timer? wordTimer;
+
+  int votingTimerCountdown = 0;
+  Timer? votingTimer;
 
   bool revealWord = false;
 
@@ -124,7 +127,12 @@ class _GameViewState extends State<GameView> {
     return words[Random().nextInt(words.length)];
   }
 
-  void startCountdown(bool isHost, String pack, List<String> usedWords) {
+  void startCountdown(
+    bool isHost,
+    String pack,
+    List<String> usedWords,
+    int timeLimit,
+  ) {
     countdownTimer?.cancel();
     setState(() {
       countdown = 5;
@@ -144,6 +152,7 @@ class _GameViewState extends State<GameView> {
           });
         }
         startWordTimerCountdown();
+        startVotingCountdown(isHost, timeLimit);
       }
     });
   }
@@ -162,6 +171,28 @@ class _GameViewState extends State<GameView> {
         timer.cancel();
       }
     });
+  }
+
+  void startVotingCountdown(bool isHost, int timeLimit) {
+    votingTimer?.cancel();
+    setState(() {
+      votingTimerCountdown = timeLimit * 60; // store as seconds
+    });
+    votingTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (votingTimerCountdown > 0) {
+        setState(() {
+          votingTimerCountdown--;
+        });
+      } else {
+        timer.cancel();
+      }
+    });
+  }
+
+  String get votingTimerDisplay {
+    final minutes = votingTimerCountdown ~/ 60;
+    final seconds = votingTimerCountdown % 60;
+    return '$minutes:${seconds.toString().padLeft(2, '0')}';
   }
 
   @override
@@ -185,6 +216,8 @@ class _GameViewState extends State<GameView> {
   @override
   void dispose() {
     countdownTimer?.cancel();
+    wordTimer?.cancel();
+    votingTimer?.cancel();
     super.dispose();
   }
 
@@ -210,7 +243,7 @@ class _GameViewState extends State<GameView> {
 
     if (wordState == 'COUNTER' && lastWordState != 'COUNTER') {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        startCountdown(isHost, pack, usedWords);
+        startCountdown(isHost, pack, usedWords, gameData['timeLimit']);
       });
     }
     lastWordState = wordState;
@@ -230,6 +263,80 @@ class _GameViewState extends State<GameView> {
       (player) => player['name'] == userName && player['isSpy'],
     );
 
+    Widget getContent() {
+      return (wordTimerCountdown > 1 || revealWord == true)
+          ? isSpy
+              ? Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Image.asset(
+                      'assets/logos/spy.png',
+                      color: CupertinoColors.white,
+                      width: 200,
+                    ),
+                    Text(
+                      'Shh... You are a spy!\n\nTry to guess the word\nand blend in...${(wordTimerCountdown > 1) ? '\n\nHiding in $wordTimerCountdown seconds' : ''}',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontSize: 24,
+                        color: CupertinoColors.white,
+                      ),
+                    ),
+                  ],
+                ),
+              )
+              : Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 25),
+                      child: AutoSizeText(
+                        wordState.toUpperCase().split(' ').join('\n'),
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontSize: 75,
+                          color: CupertinoColors.white,
+                        ),
+                        maxLines: wordState.trim().split(' ').length,
+                        minFontSize: 24,
+                      ),
+                    ),
+                    SizedBox(height: 20),
+                    Text(
+                      'Keep this word a secret!${(wordTimerCountdown > 1) ? ' Hiding in $wordTimerCountdown seconds' : ''}',
+                      style: const TextStyle(
+                        fontSize: 15,
+                        color: CupertinoColors.systemGrey,
+                      ),
+                    ),
+                  ],
+                ),
+              )
+          : Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  CupertinoIcons.eye_slash,
+                  color: CupertinoColors.systemGrey,
+                  size: 80,
+                ),
+                SizedBox(height: 20),
+                Text(
+                  'Tap and hold anywhere to reveal the word',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    color: CupertinoColors.systemGrey,
+                  ),
+                ),
+              ],
+            ),
+          );
+    }
+
     return CupertinoPageScaffold(
       backgroundColor: CupertinoColors.black,
       child: SafeArea(
@@ -237,99 +344,73 @@ class _GameViewState extends State<GameView> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              (wordTimerCountdown == 1)
-                  ? GestureDetector(
-                    onTapDown: (_) {
-                      setState(() {
-                        revealWord = true;
-                      });
-                    },
-                    onTapUp: (_) {
-                      setState(() {
-                        revealWord = false;
-                      });
-                    },
-                    onTapCancel: () {
-                      setState(() {
-                        revealWord = false;
-                      });
-                    },
-                    child: CupertinoButton.tinted(
-                      color: CupertinoColors.white,
-                      child: Text(
-                        'Reveal the word',
-                        style: TextStyle(color: CupertinoColors.white),
-                      ),
-                      onPressed: () {},
-                    ),
-                  )
-                  : Container(),
-              Expanded(
-                child:
-                    (wordTimerCountdown > 1 || revealWord == true)
-                        ? isSpy
-                            ? Center(
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Image.asset(
-                                    'assets/logos/spy.png',
-                                    color: CupertinoColors.white,
-                                    width: 200,
-                                  ),
-                                  Text(
-                                    'Shh... You are a spy!\n\nTry to guess the word\nand blend in...${(wordTimerCountdown > 1) ? '\n\nHiding in $wordTimerCountdown seconds' : ''}',
-                                    textAlign: TextAlign.center,
-                                    style: const TextStyle(
-                                      fontSize: 24,
-                                      color: CupertinoColors.white,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            )
-                            : Center(
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 25,
-                                    ),
-                                    child: AutoSizeText(
-                                      wordState
-                                          .toUpperCase()
-                                          .split(' ')
-                                          .join('\n'),
-                                      textAlign: TextAlign.center,
-                                      style: const TextStyle(
-                                        fontSize: 75,
-                                        color: CupertinoColors.white,
-                                      ),
-                                      maxLines:
-                                          wordState.trim().split(' ').length,
-                                      minFontSize: 24,
-                                    ),
-                                  ),
-                                  SizedBox(height: 20),
-                                  Text(
-                                    'Keep this word a secret!${(wordTimerCountdown > 1) ? ' Hiding in $wordTimerCountdown seconds' : ''}',
-                                    style: const TextStyle(
-                                      fontSize: 15,
-                                      color: CupertinoColors.systemGrey,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            )
-                        : Center(
-                          child: Icon(
-                            CupertinoIcons.eye_slash,
-                            color: CupertinoColors.systemGrey,
-                            size: 80,
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          CupertinoIcons.person,
+                          color: CupertinoColors.white,
+                        ),
+                        SizedBox(width: 5),
+                        Text(
+                          gameData['players'].length.toString(),
+                          style: const TextStyle(
+                            fontSize: 18,
+                            color: CupertinoColors.white,
                           ),
                         ),
+                      ],
+                    ),
+                    Text(
+                      'Pack: ${capitalizeWords(pack)}',
+                      style: const TextStyle(
+                        fontSize: 18,
+                        color: CupertinoColors.white,
+                      ),
+                    ),
+                    Text(
+                      votingTimerDisplay,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        color: CupertinoColors.white,
+                      ),
+                    ),
+                  ],
+                ),
               ),
+              Expanded(
+                child:
+                    (wordTimerCountdown == 1)
+                        ? SizedBox(
+                          width: double.infinity,
+                          height: double.infinity,
+                          child: GestureDetector(
+                            behavior: HitTestBehavior.opaque,
+                            onTapDown: (_) {
+                              setState(() {
+                                revealWord = true;
+                              });
+                            },
+                            onTapUp: (_) {
+                              setState(() {
+                                revealWord = false;
+                              });
+                            },
+                            onTapCancel: () {
+                              setState(() {
+                                revealWord = false;
+                              });
+                            },
+                            child: getContent(),
+                          ),
+                        )
+                        : getContent(),
+              ),
+
               isHost
                   ? Row(
                     mainAxisAlignment: MainAxisAlignment.center,
