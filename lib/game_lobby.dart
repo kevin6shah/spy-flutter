@@ -414,10 +414,10 @@ class _GameLobbyState extends State<GameLobby> {
 
                           SizedBox(height: 20),
 
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceAround,
+                          Column(
                             children: [
                               Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
                                   Text(
                                     '${gameData['numRounds']} Rounds: ',
@@ -432,7 +432,9 @@ class _GameLobbyState extends State<GameLobby> {
                                   ),
                                 ],
                               ),
+                              SizedBox(height: 3),
                               Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
                                   Text(
                                     'Pack: ',
