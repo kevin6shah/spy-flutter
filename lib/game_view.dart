@@ -89,6 +89,13 @@ class _GameViewState extends State<GameView> {
     });
   }
 
+  Future<void> appendUsedWord(String word) async {
+    // Append the used word to the list of used words
+    await FirebaseFirestore.instance.collection('games').doc(gameCode).update({
+      'usedWords': FieldValue.arrayUnion([word]),
+    });
+  }
+
   Future<void> resetUsedWords() async {
     // Reset the used words list
     await FirebaseFirestore.instance.collection('games').doc(gameCode).update({
@@ -141,7 +148,10 @@ class _GameViewState extends State<GameView> {
         if (isHost) {
           getRandomWord(pack, usedWords).then((word) {
             FirebaseFirestore.instance.collection('games').doc(gameCode).update(
-              {'wordState': word},
+              {
+                'wordState': word,
+                'usedWords': FieldValue.arrayUnion([word]),
+              },
             );
           });
         }
@@ -193,17 +203,9 @@ class _GameViewState extends State<GameView> {
   }
 
   void startVoting() {
-    FirebaseFirestore.instance.collection('games').doc(gameCode).get().then((
-      value,
-    ) {
-      if (value.exists) {
-        final data = value.data() as Map<String, dynamic>;
-
-        FirebaseFirestore.instance.collection('games').doc(gameCode).update({
-          'usedWords': FieldValue.arrayUnion([data['wordState']]),
-          'wordState': 'VOTING',
-        });
-      }
+    FirebaseFirestore.instance.collection('games').doc(gameCode).update({
+      'votes': [],
+      'wordState': 'VOTING',
     });
   }
 
@@ -580,7 +582,7 @@ class _GameViewState extends State<GameView> {
                                 return;
                               }
 
-                              // skipVoting();
+                              initializeGame();
                             },
                           )
                           : CupertinoButton.tinted(
