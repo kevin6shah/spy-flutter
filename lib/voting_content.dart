@@ -4,9 +4,10 @@ import 'package:spycast/game_lobby.dart';
 class VotingContent extends StatefulWidget {
   final List<dynamic> players;
   final int waitingOnNumPlayers;
+  final int numSpies;
   final String userName;
-  final void Function(String votedFor) onVote;
-  final int? votedFor;
+  final void Function(List<String> votedFor) onVote;
+  final List<dynamic>? votedFor;
 
   const VotingContent({
     super.key,
@@ -15,6 +16,7 @@ class VotingContent extends StatefulWidget {
     required this.userName,
     required this.onVote,
     required this.votedFor,
+    required this.numSpies,
   });
 
   @override
@@ -22,17 +24,19 @@ class VotingContent extends StatefulWidget {
 }
 
 class _VotingContentState extends State<VotingContent> {
-  String? votedFor;
+  final Set<String> _selectedVotes = {};
+  bool _hasVoted = false;
 
   @override
   void initState() {
     super.initState();
-    setState(() {
-      votedFor =
-          widget.votedFor != null
-              ? widget.players[widget.votedFor!]['name']
-              : null;
-    });
+    if (widget.votedFor != null) {
+      _selectedVotes.addAll(
+        widget.votedFor!.map((e) => widget.players[e]['name']),
+      );
+
+      _hasVoted = true;
+    }
   }
 
   @override
@@ -48,10 +52,10 @@ class _VotingContentState extends State<VotingContent> {
             size: 80,
           ),
           const SizedBox(height: 20),
-          const Text(
-            'Tap a player to vote for the spy\nYou can only vote once!',
+          Text(
+            'Tap ${widget.numSpies} player${widget.numSpies > 1 ? "s" : ""} to vote for the spy\nYou can only vote once!',
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 16, color: CupertinoColors.white),
+            style: const TextStyle(fontSize: 16, color: CupertinoColors.white),
           ),
           const SizedBox(height: 30),
           Expanded(
@@ -61,6 +65,8 @@ class _VotingContentState extends State<VotingContent> {
                 final player = widget.players[index];
                 final name = player['name'];
                 final isSelf = name == widget.userName;
+                final isSelected = _selectedVotes.contains(name);
+
                 return Padding(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 30,
@@ -68,20 +74,24 @@ class _VotingContentState extends State<VotingContent> {
                   ),
                   child: CupertinoButton(
                     color:
-                        votedFor == name
+                        isSelected
                             ? CupertinoColors.systemIndigo
                             : CupertinoColors.darkBackgroundGray,
                     disabledColor: CupertinoColors.systemGrey,
                     onPressed:
-                        isSelf
+                        (_hasVoted ||
+                                isSelf ||
+                                isSelected ||
+                                _selectedVotes.length >= widget.numSpies)
                             ? null
                             : () {
-                              if (votedFor == null) {
-                                setState(() {
-                                  votedFor = name;
-                                });
-                                widget.onVote(name);
-                              }
+                              setState(() {
+                                _selectedVotes.add(name);
+                                if (_selectedVotes.length == widget.numSpies) {
+                                  _hasVoted = true;
+                                  widget.onVote(_selectedVotes.toList());
+                                }
+                              });
                             },
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -93,7 +103,7 @@ class _VotingContentState extends State<VotingContent> {
                             fontSize: 18,
                           ),
                         ),
-                        if (votedFor == name)
+                        if (isSelected)
                           const Icon(
                             CupertinoIcons.check_mark_circled_solid,
                             color: CupertinoColors.white,
@@ -110,7 +120,10 @@ class _VotingContentState extends State<VotingContent> {
             child: WaitingDots(
               waitingText:
                   'Waiting for ${widget.waitingOnNumPlayers} players to vote',
-              style: TextStyle(color: CupertinoColors.white, fontSize: 16),
+              style: const TextStyle(
+                color: CupertinoColors.white,
+                fontSize: 16,
+              ),
             ),
           ),
         ],

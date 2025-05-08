@@ -89,13 +89,6 @@ class _GameViewState extends State<GameView> {
     });
   }
 
-  Future<void> appendUsedWord(String word) async {
-    // Append the used word to the list of used words
-    await FirebaseFirestore.instance.collection('games').doc(gameCode).update({
-      'usedWords': FieldValue.arrayUnion([word]),
-    });
-  }
-
   Future<void> resetUsedWords() async {
     // Reset the used words list
     await FirebaseFirestore.instance.collection('games').doc(gameCode).update({
@@ -186,7 +179,9 @@ class _GameViewState extends State<GameView> {
         });
       } else {
         timer.cancel();
-        startVoting();
+        if (isHost) {
+          startVoting();
+        }
       }
     });
   }
@@ -198,8 +193,17 @@ class _GameViewState extends State<GameView> {
   }
 
   void startVoting() {
-    FirebaseFirestore.instance.collection('games').doc(gameCode).update({
-      'wordState': 'VOTING',
+    FirebaseFirestore.instance.collection('games').doc(gameCode).get().then((
+      value,
+    ) {
+      if (value.exists) {
+        final data = value.data() as Map<String, dynamic>;
+
+        FirebaseFirestore.instance.collection('games').doc(gameCode).update({
+          'usedWords': FieldValue.arrayUnion([data['wordState']]),
+          'wordState': 'VOTING',
+        });
+      }
     });
   }
 
@@ -419,6 +423,7 @@ class _GameViewState extends State<GameView> {
                         gameData['players'].length -
                         (gameData['votes']?.length ?? 0),
                     userName: userName,
+                    numSpies: gameData['numSpies'],
                     votedFor:
                         gameData['votes']?.firstWhere(
                           (vote) =>
@@ -426,7 +431,7 @@ class _GameViewState extends State<GameView> {
                               userName,
                           orElse: () => null,
                         )?['votedFor'],
-                    onVote: (votedFor) {
+                    onVote: (votedForList) {
                       if (!mounted) {
                         return;
                       }
@@ -434,9 +439,16 @@ class _GameViewState extends State<GameView> {
                       List<dynamic> players =
                           gameData['players'] as List<dynamic>;
 
-                      int votedForIndex = players.indexWhere(
-                        (player) => player['name'] == votedFor,
-                      );
+                      // Map the votedForList (names) to their indices
+                      List<int> votedForIndices =
+                          votedForList
+                              .map<int>(
+                                (name) => players.indexWhere(
+                                  (player) => player['name'] == name,
+                                ),
+                              )
+                              .where((index) => index != -1)
+                              .toList();
 
                       int votedByIndex = players.indexWhere(
                         (player) => player['name'] == userName,
@@ -444,7 +456,7 @@ class _GameViewState extends State<GameView> {
 
                       var addItem = {
                         'votedBy': votedByIndex,
-                        'votedFor': votedForIndex,
+                        'votedFor': votedForIndices,
                       };
 
                       FirebaseFirestore.instance
@@ -556,20 +568,35 @@ class _GameViewState extends State<GameView> {
                         },
                       ),
                       SizedBox(width: 10),
-                      CupertinoButton.tinted(
-                        color: CupertinoColors.white,
-                        child: Text(
-                          'Start Voting',
-                          style: TextStyle(color: CupertinoColors.white),
-                        ),
-                        onPressed: () {
-                          if (!mounted) {
-                            return;
-                          }
+                      wordState == 'VOTING'
+                          ? CupertinoButton.tinted(
+                            color: CupertinoColors.white,
+                            child: Text(
+                              'Skip Voting',
+                              style: TextStyle(color: CupertinoColors.white),
+                            ),
+                            onPressed: () {
+                              if (!mounted) {
+                                return;
+                              }
 
-                          startVoting();
-                        },
-                      ),
+                              // skipVoting();
+                            },
+                          )
+                          : CupertinoButton.tinted(
+                            color: CupertinoColors.white,
+                            child: Text(
+                              'Start Voting',
+                              style: TextStyle(color: CupertinoColors.white),
+                            ),
+                            onPressed: () {
+                              if (!mounted) {
+                                return;
+                              }
+
+                              startVoting();
+                            },
+                          ),
                       // CupertinoButton.tinted(
                       //   color: CupertinoColors.white,
                       //   child: Text(
