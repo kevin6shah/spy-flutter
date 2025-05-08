@@ -644,7 +644,10 @@ class _GameLobbyState extends State<GameLobby> {
                           )
                           : Column(
                             children: [
-                              _WaitingDots(),
+                              WaitingDots(
+                                waitingText:
+                                    'waiting for host to start the game',
+                              ),
                               SizedBox(height: 15),
                               CupertinoButton.filled(
                                 child: Text(
@@ -695,14 +698,16 @@ String capitalizeWords(String input) {
       .join(' ');
 }
 
-class _WaitingDots extends StatefulWidget {
-  const _WaitingDots();
+class WaitingDots extends StatefulWidget {
+  const WaitingDots({super.key, required this.waitingText, this.style});
+  final String waitingText;
+  final TextStyle? style;
 
   @override
-  State<_WaitingDots> createState() => _WaitingDotsState();
+  State<WaitingDots> createState() => _WaitingDotsState();
 }
 
-class _WaitingDotsState extends State<_WaitingDots> {
+class _WaitingDotsState extends State<WaitingDots> {
   int dotCount = 0;
   bool _disposed = false; // Add this flag
 
@@ -730,8 +735,8 @@ class _WaitingDotsState extends State<_WaitingDots> {
   @override
   Widget build(BuildContext context) {
     return Text(
-      'waiting for host to start the game${'.' * dotCount}',
-      style: const TextStyle(fontSize: 16),
+      '${widget.waitingText}${'.' * dotCount}',
+      style: widget.style ?? const TextStyle(fontSize: 16),
     );
   }
 }

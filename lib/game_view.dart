@@ -7,6 +7,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:spycast/game_lobby.dart';
 import 'package:spycast/main.dart';
+import 'package:spycast/voting_content.dart';
 
 class GameView extends StatefulWidget {
   const GameView({
@@ -185,6 +186,7 @@ class _GameViewState extends State<GameView> {
         });
       } else {
         timer.cancel();
+        startVoting();
       }
     });
   }
@@ -193,6 +195,12 @@ class _GameViewState extends State<GameView> {
     final minutes = votingTimerCountdown ~/ 60;
     final seconds = votingTimerCountdown % 60;
     return '$minutes:${seconds.toString().padLeft(2, '0')}';
+  }
+
+  void startVoting() {
+    FirebaseFirestore.instance.collection('games').doc(gameCode).update({
+      'wordState': 'VOTING',
+    });
   }
 
   @override
@@ -349,15 +357,38 @@ class _GameViewState extends State<GameView> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Row(
+                    Column(
                       children: [
-                        Icon(
-                          CupertinoIcons.person,
-                          color: CupertinoColors.white,
+                        Row(
+                          children: [
+                            Icon(
+                              CupertinoIcons.person,
+                              color: CupertinoColors.white,
+                            ),
+                            SizedBox(width: 5),
+                            Text(
+                              gameData['players'].length.toString(),
+                              style: const TextStyle(
+                                fontSize: 18,
+                                color: CupertinoColors.white,
+                              ),
+                            ),
+                          ],
                         ),
-                        SizedBox(width: 5),
+                      ],
+                    ),
+                    Column(
+                      children: [
                         Text(
-                          gameData['players'].length.toString(),
+                          gameCode,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            color: CupertinoColors.white,
+                          ),
+                        ),
+                        SizedBox(height: 3),
+                        Text(
+                          'Pack: ${capitalizeWords(pack)}',
                           style: const TextStyle(
                             fontSize: 18,
                             color: CupertinoColors.white,
@@ -365,51 +396,93 @@ class _GameViewState extends State<GameView> {
                         ),
                       ],
                     ),
-                    Text(
-                      'Pack: ${capitalizeWords(pack)}',
-                      style: const TextStyle(
-                        fontSize: 18,
-                        color: CupertinoColors.white,
-                      ),
-                    ),
-                    Text(
-                      votingTimerDisplay,
-                      style: const TextStyle(
-                        fontSize: 18,
-                        color: CupertinoColors.white,
-                      ),
-                    ),
+                    (votingTimerDisplay != '0:00')
+                        ? Text(
+                          votingTimerDisplay,
+                          style: const TextStyle(
+                            fontSize: 18,
+                            color: CupertinoColors.white,
+                          ),
+                        )
+                        : Icon(
+                          CupertinoIcons.time,
+                          color: CupertinoColors.white,
+                        ),
                   ],
                 ),
               ),
-              Expanded(
-                child:
-                    (wordTimerCountdown == 1)
-                        ? SizedBox(
-                          width: double.infinity,
-                          height: double.infinity,
-                          child: GestureDetector(
-                            behavior: HitTestBehavior.opaque,
-                            onTapDown: (_) {
-                              setState(() {
-                                revealWord = true;
-                              });
-                            },
-                            onTapUp: (_) {
-                              setState(() {
-                                revealWord = false;
-                              });
-                            },
-                            onTapCancel: () {
-                              setState(() {
-                                revealWord = false;
-                              });
-                            },
-                            child: getContent(),
-                          ),
-                        )
-                        : getContent(),
-              ),
+
+              (wordState == 'VOTING')
+                  ? VotingContent(
+                    players: gameData['players'],
+                    waitingOnNumPlayers:
+                        gameData['players'].length -
+                        (gameData['votes']?.length ?? 0),
+                    userName: userName,
+                    votedFor:
+                        gameData['votes']?.firstWhere(
+                          (vote) =>
+                              gameData['players'][vote['votedBy']]['name'] ==
+                              userName,
+                          orElse: () => null,
+                        )?['votedFor'],
+                    onVote: (votedFor) {
+                      if (!mounted) {
+                        return;
+                      }
+
+                      List<dynamic> players =
+                          gameData['players'] as List<dynamic>;
+
+                      int votedForIndex = players.indexWhere(
+                        (player) => player['name'] == votedFor,
+                      );
+
+                      int votedByIndex = players.indexWhere(
+                        (player) => player['name'] == userName,
+                      );
+
+                      var addItem = {
+                        'votedBy': votedByIndex,
+                        'votedFor': votedForIndex,
+                      };
+
+                      FirebaseFirestore.instance
+                          .collection('games')
+                          .doc(gameCode)
+                          .update({
+                            'votes': FieldValue.arrayUnion([addItem]),
+                          });
+                    },
+                  )
+                  : Expanded(
+                    child:
+                        (wordTimerCountdown == 1)
+                            ? SizedBox(
+                              width: double.infinity,
+                              height: double.infinity,
+                              child: GestureDetector(
+                                behavior: HitTestBehavior.opaque,
+                                onTapDown: (_) {
+                                  setState(() {
+                                    revealWord = true;
+                                  });
+                                },
+                                onTapUp: (_) {
+                                  setState(() {
+                                    revealWord = false;
+                                  });
+                                },
+                                onTapCancel: () {
+                                  setState(() {
+                                    revealWord = false;
+                                  });
+                                },
+                                child: getContent(),
+                              ),
+                            )
+                            : getContent(),
+                  ),
 
               isHost
                   ? Row(
@@ -486,7 +559,7 @@ class _GameViewState extends State<GameView> {
                       CupertinoButton.tinted(
                         color: CupertinoColors.white,
                         child: Text(
-                          'Next Round',
+                          'Start Voting',
                           style: TextStyle(color: CupertinoColors.white),
                         ),
                         onPressed: () {
@@ -494,11 +567,25 @@ class _GameViewState extends State<GameView> {
                             return;
                           }
 
-                          appendUsedWord(
-                            wordState,
-                          ).then((_) => initializeGame());
+                          startVoting();
                         },
                       ),
+                      // CupertinoButton.tinted(
+                      //   color: CupertinoColors.white,
+                      //   child: Text(
+                      //     'Next Round',
+                      //     style: TextStyle(color: CupertinoColors.white),
+                      //   ),
+                      //   onPressed: () {
+                      //     if (!mounted) {
+                      //       return;
+                      //     }
+
+                      //     appendUsedWord(
+                      //       wordState,
+                      //     ).then((_) => initializeGame());
+                      //   },
+                      // ),
                     ],
                   )
                   : CupertinoButton.tinted(
