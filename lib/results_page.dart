@@ -60,136 +60,137 @@ class _ResultsPageState extends State<ResultsPage> {
     List<dynamic> playersSorted = List.from(widget.players);
     playersSorted.sort((b, a) => a['points'].compareTo(b['points']));
 
-    return Expanded(
-      child: Center(
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            AnimatedPositioned(
-              duration: const Duration(seconds: 3),
-              curve: Curves.easeInOut,
-              top: 20,
-              left:
-                  resultIconShown
-                      ? MediaQuery.of(context).size.width / 2 - 100
-                      : 20,
-              right:
-                  resultIconShown
-                      ? MediaQuery.of(context).size.width / 2 - 100
-                      : null,
-              child: Column(
-                children: [
-                  (widget.spyWin)
-                      ? ClipRect(
-                        child: Align(
-                          alignment: Alignment.center,
-                          widthFactor: 0.6,
-                          heightFactor: 0.65,
-                          child: Image.asset(
-                            'assets/logos/spy.png',
-                            color: CupertinoColors.white,
-                            height: 200,
-                          ),
+    return Center(
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          AnimatedPositioned(
+            duration: const Duration(seconds: 3),
+            curve: Curves.easeInOut,
+            top: 20,
+            left:
+                resultIconShown
+                    ? MediaQuery.of(context).size.width / 2 - 100
+                    : 20,
+            right:
+                resultIconShown
+                    ? MediaQuery.of(context).size.width / 2 - 100
+                    : null,
+            child: Column(
+              children: [
+                (widget.spyWin)
+                    ? ClipRect(
+                      child: Align(
+                        alignment: Alignment.center,
+                        widthFactor: 0.6,
+                        heightFactor: 0.65,
+                        child: Image.asset(
+                          'assets/logos/spy.png',
+                          color: CupertinoColors.white,
+                          height: 200,
                         ),
-                      )
-                      : Icon(
-                        CupertinoIcons.person_3,
-                        color: CupertinoColors.white,
-                        size: 100,
                       ),
-                  const SizedBox(height: 20),
-                  Text(
-                    getWinnerText(),
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      fontSize: 25,
+                    )
+                    : Icon(
+                      CupertinoIcons.person_3,
                       color: CupertinoColors.white,
+                      size: 100,
                     ),
+                const SizedBox(height: 20),
+                Text(
+                  getWinnerText(),
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 25,
+                    color: CupertinoColors.white,
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-            Positioned(
-              top: 55,
-              right: 0,
-              child: AnimatedContainer(
-                duration: const Duration(seconds: 7),
-                curve: Curves.easeOut,
-                height: spiesHeight,
-                width: 180,
-                child: ClipRect(
-                  child: Align(
-                    alignment: Alignment.topCenter,
-                    heightFactor: 1.0,
-                    child: Text(
-                      'Spies:\n\n${spies.join("\n")}',
-                      textAlign: TextAlign.right,
-                      style: const TextStyle(
-                        fontSize: 20,
-                        color: CupertinoColors.white,
-                      ),
+          ),
+          Positioned(
+            top: 55,
+            right: 0,
+            child: AnimatedContainer(
+              duration: const Duration(seconds: 7),
+              curve: Curves.easeOut,
+              height: spiesHeight,
+              width: 180,
+              child: ClipRect(
+                child: Align(
+                  alignment: Alignment.topCenter,
+                  heightFactor: 1.0,
+                  child: Text(
+                    'Spies:\n\n${spies.join("\n")}',
+                    textAlign: TextAlign.right,
+                    style: const TextStyle(
+                      fontSize: 20,
+                      color: CupertinoColors.white,
                     ),
                   ),
                 ),
               ),
             ),
-            Positioned(
-              top: 270,
-              left: 0,
-              right: 0,
-              child: SizedBox(
-                width: 180,
-                child: TweenAnimationBuilder<double>(
-                  tween: Tween<double>(begin: 0, end: showResults ? 1 : 0),
-                  duration: const Duration(seconds: 7),
-                  curve: Curves.easeOut,
-                  builder: (context, value, child) {
-                    return ClipRect(
-                      child: Align(
-                        alignment: Alignment.topCenter,
-                        heightFactor: value,
-                        child: child,
+          ),
+          Positioned(
+            top: 270,
+            left: 0,
+            right: 0,
+            child: SizedBox(
+              width: 180,
+              child: TweenAnimationBuilder<double>(
+                tween: Tween<double>(begin: 0, end: showResults ? 1 : 0),
+                duration: const Duration(seconds: 7),
+                curve: Curves.easeOut,
+                builder: (context, value, child) {
+                  return ClipRect(
+                    child: Align(
+                      alignment: Alignment.topCenter,
+                      heightFactor: value,
+                      child: child,
+                    ),
+                  );
+                },
+                child: SingleChildScrollView(
+                  child: Column(
+                    children: [
+                      Text(
+                        'Round ${widget.currentRound} Results',
+                        textAlign: TextAlign.left,
+                        style: const TextStyle(
+                          fontSize: 20,
+                          color: CupertinoColors.white,
+                        ),
                       ),
-                    );
-                  },
-                  child: SingleChildScrollView(
-                    child: Column(
-                      children: [
-                        Text(
-                          'Round ${widget.currentRound} Results',
-                          textAlign: TextAlign.left,
-                          style: const TextStyle(
-                            fontSize: 20,
-                            color: CupertinoColors.white,
+                      SizedBox(height: 5),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            'Players',
+                            textAlign: TextAlign.left,
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w600,
+                              color: CupertinoColors.white,
+                            ),
                           ),
-                        ),
-                        SizedBox(height: 5),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Text(
-                              'Players',
-                              textAlign: TextAlign.left,
-                              style: TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.w600,
-                                color: CupertinoColors.white,
-                              ),
+                          Text(
+                            'Points',
+                            textAlign: TextAlign.right,
+                            style: const TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w600,
+                              color: CupertinoColors.white,
                             ),
-                            Text(
-                              'Points',
-                              textAlign: TextAlign.right,
-                              style: const TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.w600,
-                                color: CupertinoColors.white,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 3),
-                        SizedBox(
-                          height: 200,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 3),
+                      SizedBox(
+                        height: 200,
+                        child: Padding(
+                          padding: const EdgeInsets.all(5),
                           child: ListView.builder(
                             shrinkWrap: true,
                             itemCount: playersSorted.length,
@@ -219,14 +220,14 @@ class _ResultsPageState extends State<ResultsPage> {
                             },
                           ),
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

@@ -41,8 +41,7 @@ class _VotingContentState extends State<VotingContent> {
 
   @override
   Widget build(BuildContext context) {
-    return Expanded(
-      child: Column(
+    return Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           const SizedBox(height: 20),
@@ -127,7 +126,7 @@ class _VotingContentState extends State<VotingContent> {
             ),
           ),
         ],
-      ),
+      
     );
   }
 }

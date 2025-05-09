@@ -444,95 +444,112 @@ class _GameViewState extends State<GameView> {
     }
 
     Widget getContentByWordState() {
-      switch (wordState) {
-        case 'VOTING':
-          return VotingContent(
-            players: gameData['players'],
-            waitingOnNumPlayers: votingPlayersLeft,
-            userName: userName,
-            numSpies: gameData['numSpies'],
-            votedFor:
-                gameData['votes']?.firstWhere(
-                  (vote) =>
-                      gameData['players'][vote['votedBy']]['name'] == userName,
-                  orElse: () => null,
-                )?['votedFor'],
-            onVote: (votedForList) {
-              if (!mounted) {
-                return;
-              }
+      return Expanded(
+        child: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 500),
+          transitionBuilder: (child, animation) {
+            final offsetAnimation = Tween<Offset>(
+              begin: const Offset(0, 1), // Start from below the screen
+              end: Offset.zero, // End at the original position
+            ).animate(animation);
 
-              List<dynamic> players = gameData['players'] as List<dynamic>;
+            return SlideTransition(position: offsetAnimation, child: child);
+          },
+          child: Builder(
+            key: ValueKey<String>(wordState),
+            builder: (context) {
+              switch (wordState) {
+                case 'VOTING':
+                  return VotingContent(
+                    players: gameData['players'],
+                    waitingOnNumPlayers: votingPlayersLeft,
+                    userName: userName,
+                    numSpies: gameData['numSpies'],
+                    votedFor:
+                        gameData['votes']?.firstWhere(
+                          (vote) =>
+                              gameData['players'][vote['votedBy']]['name'] ==
+                              userName,
+                          orElse: () => null,
+                        )?['votedFor'],
+                    onVote: (votedForList) {
+                      if (!mounted) {
+                        return;
+                      }
 
-              // Map the votedForList (names) to their indices
-              List<int> votedForIndices =
-                  votedForList
-                      .map<int>(
-                        (name) => players.indexWhere(
-                          (player) => player['name'] == name,
+                      List<dynamic> players =
+                          gameData['players'] as List<dynamic>;
+
+                      // Map the votedForList (names) to their indices
+                      List<int> votedForIndices =
+                          votedForList
+                              .map<int>(
+                                (name) => players.indexWhere(
+                                  (player) => player['name'] == name,
+                                ),
+                              )
+                              .where((index) => index != -1)
+                              .toList();
+
+                      int votedByIndex = players.indexWhere(
+                        (player) => player['name'] == userName,
+                      );
+
+                      var addItem = {
+                        'votedBy': votedByIndex,
+                        'votedFor': votedForIndices,
+                      };
+
+                      FirebaseFirestore.instance
+                          .collection('games')
+                          .doc(gameCode)
+                          .update({
+                            'votes': FieldValue.arrayUnion([addItem]),
+                          });
+                    },
+                  );
+                case 'RESULTS':
+                  return ResultsPage(
+                    spyWin: gameData['spyWin'] == true,
+                    players: gameData['players'],
+                    numSpies: gameData['numSpies'] as int,
+                    currentRound: gameData['currentRound'] as int,
+                  );
+
+                case 'FINAL_RESULTS':
+                  return ShowWinner(players: gameData['players']);
+
+                default:
+                  return (wordTimerCountdown == 1)
+                      ? SizedBox(
+                        width: double.infinity,
+                        height: double.infinity,
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTapDown: (_) {
+                            setState(() {
+                              revealWord = true;
+                            });
+                          },
+                          onTapUp: (_) {
+                            setState(() {
+                              revealWord = false;
+                            });
+                          },
+                          onTapCancel: () {
+                            setState(() {
+                              revealWord = false;
+                            });
+                          },
+                          child: getContent(),
                         ),
                       )
-                      .where((index) => index != -1)
-                      .toList();
-
-              int votedByIndex = players.indexWhere(
-                (player) => player['name'] == userName,
-              );
-
-              var addItem = {
-                'votedBy': votedByIndex,
-                'votedFor': votedForIndices,
-              };
-
-              FirebaseFirestore.instance
-                  .collection('games')
-                  .doc(gameCode)
-                  .update({
-                    'votes': FieldValue.arrayUnion([addItem]),
-                  });
+                      : getContent();
+              }
             },
-          );
-        case 'RESULTS':
-          return ResultsPage(
-            spyWin: gameData['spyWin'] == true,
-            players: gameData['players'],
-            numSpies: gameData['numSpies'] as int,
-            currentRound: gameData['currentRound'] as int,
-          );
-
-        case 'FINAL_RESULTS':
-          return ShowWinner(players: gameData['players']);
-
-        default:
-          return Expanded(
-            child:
-                (wordTimerCountdown == 1)
-                    ? SizedBox(
-                      width: double.infinity,
-                      height: double.infinity,
-                      child: GestureDetector(
-                        behavior: HitTestBehavior.opaque,
-                        onTapDown: (_) {
-                          setState(() {
-                            revealWord = true;
-                          });
-                        },
-                        onTapUp: (_) {
-                          setState(() {
-                            revealWord = false;
-                          });
-                        },
-                        onTapCancel: () {
-                          setState(() {
-                            revealWord = false;
-                          });
-                        },
-                        child: getContent(),
-                      ),
-                    )
-                    : getContent(),
-          );
-      }
+          ),
+        ),
+      );
     }
 
     Widget getNextButtonByWordState() {

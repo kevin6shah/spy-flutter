@@ -23,7 +23,16 @@ void main() async {
       minimumFetchInterval: const Duration(hours: 1),
     ),
   );
-  await remoteConfig.fetchAndActivate();
+
+  try {
+    await remoteConfig.fetchAndActivate();
+  } catch (e) {
+    debugPrint('Failed to fetch and activate remote config: $e');
+    // Optionally, you can set default values or handle the error gracefully
+    remoteConfig.setDefaults(<String, dynamic>{
+      'min_required_app_version': '1.0.0', // Example default value
+    });
+  }
 
   final minRequiredVersion = remoteConfig.getString('min_required_app_version');
 
