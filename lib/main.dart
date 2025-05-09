@@ -1,18 +1,55 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_remote_config/firebase_remote_config.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:spycast/create_game.dart';
 import 'package:spycast/firebase_options.dart';
 import 'package:spycast/game_lobby.dart';
 import 'package:spycast/instructions.dart';
+import 'package:spycast/update_app.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  runApp(const MyApp());
+
+  final remoteConfig = FirebaseRemoteConfig.instance;
+  await remoteConfig.setConfigSettings(
+    RemoteConfigSettings(
+      fetchTimeout: const Duration(seconds: 10),
+      minimumFetchInterval: const Duration(hours: 1),
+    ),
+  );
+  await remoteConfig.fetchAndActivate();
+
+  final minRequiredVersion = remoteConfig.getString('min_required_app_version');
+
+  // Fetch the current app version
+  final packageInfo = await PackageInfo.fromPlatform();
+  final currentVersion = packageInfo.version;
+
+  if (_isVersionOlder(currentVersion, minRequiredVersion)) {
+    runApp(const UpdateRequiredApp());
+  } else {
+    runApp(const MyApp());
+  }
+}
+
+bool _isVersionOlder(String current, String required) {
+  final currentParts = current.split('.').map(int.parse).toList();
+  final requiredParts = required.split('.').map(int.parse).toList();
+
+  for (int i = 0; i < requiredParts.length; i++) {
+    if (i >= currentParts.length || currentParts[i] < requiredParts[i]) {
+      return true;
+    } else if (currentParts[i] > requiredParts[i]) {
+      return false;
+    }
+  }
+  return false;
 }
 
 class MyApp extends StatelessWidget {
