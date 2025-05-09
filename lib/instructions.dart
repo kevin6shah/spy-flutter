@@ -102,6 +102,33 @@ class Instructions extends StatelessWidget {
                 textColor: secondaryText,
               ),
               SizedBox(height: 40),
+              // Add new section for Point System
+              Text(
+                'Point System',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0.2,
+                  color: accent,
+                ),
+              ),
+              SizedBox(height: 10),
+              _buildBullet(
+                'If the spy wins: Each spy gets 3 points. Non-spies get 1 point if they voted for a spy, otherwise 0.',
+                bulletColor: accent,
+                textColor: secondaryText,
+              ),
+              _buildBullet(
+                'If the spy loses: Each spy gets 0 points. Non-spies get 2 points if they voted for a spy, otherwise 1.',
+                bulletColor: accent,
+                textColor: secondaryText,
+              ),
+              _buildBullet(
+                'Points are added up individually after each round.',
+                bulletColor: accent,
+                textColor: secondaryText,
+              ),
+              SizedBox(height: 40),
               Divider(
                 thickness: 1.2,
                 color:
