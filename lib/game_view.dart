@@ -266,7 +266,7 @@ class _GameViewState extends State<GameView> {
         } else {
           // Non-spy gets 1 point if they did NOT vote for any spy
           bool votedForSpy = votedFor.any((idx) => spyIndices.contains(idx));
-          points = votedForSpy ? 0 : 1;
+          points = votedForSpy ? 1 : 0;
         }
       } else {
         if (isSpy) {
@@ -355,7 +355,6 @@ class _GameViewState extends State<GameView> {
     } else if (wordState == 'VOTING') {
       if (votingTimer?.isActive == true) {
         resetVotingTimer();
-        print('Voting timer is active. Resetting');
       }
 
       if (votingPlayersLeft == 0 && isHost) {
