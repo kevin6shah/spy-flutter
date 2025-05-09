@@ -4,8 +4,10 @@ import 'dart:math';
 import 'package:auto_size_text/auto_size_text.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:spycast/game_lobby.dart';
+import 'package:spycast/instructions.dart';
 import 'package:spycast/main.dart';
 import 'package:spycast/results_page.dart';
 import 'package:spycast/show_winner.dart';
@@ -633,9 +635,21 @@ class _GameViewState extends State<GameView> {
                             color: CupertinoColors.white,
                           ),
                         )
-                        : Icon(
-                          CupertinoIcons.time,
+                        : IconButton(
+                          icon: Icon(CupertinoIcons.info),
                           color: CupertinoColors.white,
+                          onPressed: () {
+                            if (!mounted) return;
+                            Navigator.push(
+                              context,
+                              CupertinoPageRoute(
+                                builder: (context) {
+                                  return Instructions(isDark: true);
+                                },
+                                fullscreenDialog: true,
+                              ),
+                            );
+                          },
                         ),
                   ],
                 ),

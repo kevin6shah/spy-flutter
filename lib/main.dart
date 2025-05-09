@@ -369,6 +369,7 @@ class _MyHomePageState extends State<MyHomePage> {
                           context2,
                           CupertinoPageRoute(
                             builder: (context) => const Instructions(),
+                            fullscreenDialog: true,
                           ),
                         ),
                   ),

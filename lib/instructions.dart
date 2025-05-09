@@ -3,25 +3,19 @@ import 'package:flutter/material.dart';
 import 'package:spycast/main.dart';
 
 class Instructions extends StatelessWidget {
-  const Instructions({super.key});
+  final bool? isDark;
+  const Instructions({super.key, this.isDark});
 
   @override
   Widget build(BuildContext context) {
-    final isDark = !ThemeUtils.isLightMode(context);
+    final isDark = this.isDark ?? !ThemeUtils.isLightMode(context);
     final primaryText = isDark ? CupertinoColors.white : CupertinoColors.black;
     final secondaryText =
         isDark ? CupertinoColors.systemGrey2 : CupertinoColors.secondaryLabel;
     final accent = CupertinoColors.systemBrown;
 
     return CupertinoPageScaffold(
-      navigationBar: CupertinoNavigationBar(
-        middle: Text('Instructions', style: TextStyle(color: primaryText)),
-        previousPageTitle: 'Back',
-        backgroundColor:
-            isDark
-                ? CupertinoColors.black
-                : CupertinoColors.extraLightBackgroundGray,
-      ),
+      navigationBar: CupertinoNavigationBar(middle: Text('Instructions')),
       backgroundColor: isDark ? CupertinoColors.black : CupertinoColors.white,
       child: SafeArea(
         child: SingleChildScrollView(

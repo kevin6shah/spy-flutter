@@ -27,12 +27,19 @@ class GameLobby extends StatefulWidget {
     String userName,
     SharedPreferences prefs,
   ) {
-    FirebaseFirestore.instance.collection('games').doc(gameCode).set({
-      'players': FieldValue.arrayRemove([
-        {'name': userName, 'isHost': false, 'isSpy': false},
-        {'name': userName, 'isHost': false, 'isSpy': true},
-      ]),
-    }, SetOptions(merge: true));
+    FirebaseFirestore.instance.collection('games').doc(gameCode).get().then((
+      doc,
+    ) {
+      if (doc.exists) {
+        final players =
+            (doc.data()?['players'] as List<dynamic>? ?? [])
+                .where((player) => player['name'] != userName)
+                .toList();
+        FirebaseFirestore.instance.collection('games').doc(gameCode).update({
+          'players': players,
+        });
+      }
+    });
 
     prefs.remove('gameCode');
 
@@ -84,7 +91,7 @@ class _GameLobbyState extends State<GameLobby> {
         if (!exists) {
           FirebaseFirestore.instance.collection('games').doc(gameCode).update({
             'players': FieldValue.arrayUnion([
-              {'name': userName, 'isHost': false, 'isSpy': false},
+              {'name': userName, 'isHost': false, 'isSpy': false, 'points': 0},
             ]),
           });
         }
