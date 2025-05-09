@@ -7,6 +7,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:spycast/game_lobby.dart';
 import 'package:spycast/main.dart';
+import 'package:spycast/results_page.dart';
 import 'package:spycast/voting_content.dart';
 
 class GameView extends StatefulWidget {
@@ -41,7 +42,7 @@ class _GameViewState extends State<GameView> {
 
   String lastWordState = '';
 
-  void initializeGame() {
+  void initializeGame([bool incrementRound = false]) {
     // assign numbers of spies randomly from the list of players
     FirebaseFirestore.instance.collection('games').doc(gameCode).get().then((
       doc,
@@ -80,10 +81,11 @@ class _GameViewState extends State<GameView> {
         }
         FirebaseFirestore.instance.collection('games').doc(gameCode).update({
           'players': updatedPlayers,
-        });
-
-        FirebaseFirestore.instance.collection('games').doc(gameCode).update({
           'wordState': 'COUNTER',
+          'currentRound':
+              incrementRound
+                  ? (data['currentRound'] as int) + 1
+                  : data['currentRound'],
         });
       }
     });
@@ -196,6 +198,13 @@ class _GameViewState extends State<GameView> {
     });
   }
 
+  void resetVotingTimer() {
+    votingTimer?.cancel();
+    setState(() {
+      votingTimerCountdown = 0;
+    });
+  }
+
   String get votingTimerDisplay {
     final minutes = votingTimerCountdown ~/ 60;
     final seconds = votingTimerCountdown % 60;
@@ -206,6 +215,75 @@ class _GameViewState extends State<GameView> {
     FirebaseFirestore.instance.collection('games').doc(gameCode).update({
       'votes': [],
       'wordState': 'VOTING',
+    });
+  }
+
+  bool didSpyWin(List<dynamic> players, List<dynamic> votes) {
+    // Find the index of the spy
+    int spyIndex = players.indexWhere((p) => p['isSpy'] == true);
+    if (spyIndex == -1) return false; // No spy found, default to players win
+
+    // Count votes for the spy
+    int votesForSpy = 0;
+    for (var vote in votes) {
+      if (vote['votedFor'] is List) {
+        votesForSpy +=
+            (vote['votedFor'] as List).where((i) => i == spyIndex).length;
+      }
+    }
+
+    int numPlayers = players.length;
+    // Majority: more than half
+    return votesForSpy <= numPlayers ~/ 2;
+  }
+
+  void calculateResult(
+    List<dynamic> players,
+    List<dynamic> votes,
+    bool spyWin,
+  ) {
+    // Find spy indices
+    List<int> spyIndices = [];
+    for (int i = 0; i < players.length; i++) {
+      if (players[i]['isSpy'] == true) spyIndices.add(i);
+    }
+
+    // Map: player index -> who they voted for
+    Map<int, List<int>> playerVotes = {};
+    for (var vote in votes) {
+      playerVotes[vote['votedBy']] = List<int>.from(vote['votedFor']);
+    }
+
+    // Assign points
+    for (int i = 0; i < players.length; i++) {
+      int points = 0;
+      bool isSpy = players[i]['isSpy'] == true;
+      List<int> votedFor = playerVotes[i] ?? [];
+
+      if (spyWin) {
+        if (isSpy) {
+          points = 3;
+        } else {
+          // Non-spy gets 1 point if they did NOT vote for any spy
+          bool votedForSpy = votedFor.any((idx) => spyIndices.contains(idx));
+          points = votedForSpy ? 0 : 1;
+        }
+      } else {
+        if (isSpy) {
+          points = 0;
+        } else {
+          // Non-spy gets 2 points if they voted for any spy, else 1
+          bool votedForSpy = votedFor.any((idx) => spyIndices.contains(idx));
+          points = votedForSpy ? 2 : 1;
+        }
+      }
+      players[i]['points'] = (players[i]['points'] ?? 0) + points;
+    }
+    // Update Firestore
+    FirebaseFirestore.instance.collection('games').doc(gameCode).update({
+      'wordState': 'RESULTS',
+      'players': players,
+      'spyWin': spyWin,
     });
   }
 
@@ -255,6 +333,9 @@ class _GameViewState extends State<GameView> {
     String pack = gameData['pack']?.toString() ?? '';
     List<String> usedWords = List<String>.from(gameData['usedWords'] ?? []);
 
+    int votingPlayersLeft =
+        gameData['players'].length - (gameData['votes']?.length ?? 0);
+
     if (wordState == 'COUNTER' && lastWordState != 'COUNTER') {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         startCountdown(isHost, pack, usedWords, gameData['timeLimit']);
@@ -271,6 +352,16 @@ class _GameViewState extends State<GameView> {
           style: const TextStyle(fontSize: 100, color: CupertinoColors.white),
         ),
       );
+    } else if (wordState == 'VOTING') {
+      if (votingTimer?.isActive == true) {
+        resetVotingTimer();
+        print('Voting timer is active. Resetting');
+      }
+
+      if (votingPlayersLeft == 0 && isHost) {
+        bool spyWin = didSpyWin(gameData['players'], gameData['votes']);
+        calculateResult(gameData['players'], gameData['votes'], spyWin);
+      }
     }
 
     bool isSpy = gameData['players'].any(
@@ -351,6 +442,133 @@ class _GameViewState extends State<GameView> {
           );
     }
 
+    Widget getContentByWordState() {
+      switch (wordState) {
+        case 'VOTING':
+          return VotingContent(
+            players: gameData['players'],
+            waitingOnNumPlayers: votingPlayersLeft,
+            userName: userName,
+            numSpies: gameData['numSpies'],
+            votedFor:
+                gameData['votes']?.firstWhere(
+                  (vote) =>
+                      gameData['players'][vote['votedBy']]['name'] == userName,
+                  orElse: () => null,
+                )?['votedFor'],
+            onVote: (votedForList) {
+              if (!mounted) {
+                return;
+              }
+
+              List<dynamic> players = gameData['players'] as List<dynamic>;
+
+              // Map the votedForList (names) to their indices
+              List<int> votedForIndices =
+                  votedForList
+                      .map<int>(
+                        (name) => players.indexWhere(
+                          (player) => player['name'] == name,
+                        ),
+                      )
+                      .where((index) => index != -1)
+                      .toList();
+
+              int votedByIndex = players.indexWhere(
+                (player) => player['name'] == userName,
+              );
+
+              var addItem = {
+                'votedBy': votedByIndex,
+                'votedFor': votedForIndices,
+              };
+
+              FirebaseFirestore.instance
+                  .collection('games')
+                  .doc(gameCode)
+                  .update({
+                    'votes': FieldValue.arrayUnion([addItem]),
+                  });
+            },
+          );
+        case 'RESULTS':
+          return ResultsPage(
+            spyWin: gameData['spyWin'] == true,
+            players: gameData['players'],
+            numSpies: gameData['numSpies'] as int,
+            currentRound: gameData['currentRound'] as int,
+          );
+
+        default:
+          return Expanded(
+            child:
+                (wordTimerCountdown == 1)
+                    ? SizedBox(
+                      width: double.infinity,
+                      height: double.infinity,
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTapDown: (_) {
+                          setState(() {
+                            revealWord = true;
+                          });
+                        },
+                        onTapUp: (_) {
+                          setState(() {
+                            revealWord = false;
+                          });
+                        },
+                        onTapCancel: () {
+                          setState(() {
+                            revealWord = false;
+                          });
+                        },
+                        child: getContent(),
+                      ),
+                    )
+                    : getContent(),
+          );
+      }
+    }
+
+    Widget getNextButtonByWordState() {
+      Widget buildButton(String text, VoidCallback onPressed) {
+        return CupertinoButton.tinted(
+          color: CupertinoColors.white,
+          onPressed: onPressed,
+          child: Text(
+            text,
+            style: const TextStyle(color: CupertinoColors.white),
+          ),
+        );
+      }
+
+      switch (wordState) {
+        case 'VOTING':
+          return buildButton('Skip Voting', () {
+            if (!mounted) return;
+            initializeGame();
+          });
+        case 'RESULTS':
+          if (gameData['currentRound'] <= gameData['numRounds']) {
+            return buildButton('Next Round', () {
+              if (!mounted) return;
+              initializeGame(true);
+            });
+          } else {
+            return buildButton('Show Results', () {
+              if (!mounted) return;
+              // showResults();
+            });
+          }
+        default:
+          return buildButton('Start Voting', () {
+            if (!mounted) return;
+            startVoting();
+          });
+      }
+    }
+
     return CupertinoPageScaffold(
       backgroundColor: CupertinoColors.black,
       child: SafeArea(
@@ -418,85 +636,7 @@ class _GameViewState extends State<GameView> {
                 ),
               ),
 
-              (wordState == 'VOTING')
-                  ? VotingContent(
-                    players: gameData['players'],
-                    waitingOnNumPlayers:
-                        gameData['players'].length -
-                        (gameData['votes']?.length ?? 0),
-                    userName: userName,
-                    numSpies: gameData['numSpies'],
-                    votedFor:
-                        gameData['votes']?.firstWhere(
-                          (vote) =>
-                              gameData['players'][vote['votedBy']]['name'] ==
-                              userName,
-                          orElse: () => null,
-                        )?['votedFor'],
-                    onVote: (votedForList) {
-                      if (!mounted) {
-                        return;
-                      }
-
-                      List<dynamic> players =
-                          gameData['players'] as List<dynamic>;
-
-                      // Map the votedForList (names) to their indices
-                      List<int> votedForIndices =
-                          votedForList
-                              .map<int>(
-                                (name) => players.indexWhere(
-                                  (player) => player['name'] == name,
-                                ),
-                              )
-                              .where((index) => index != -1)
-                              .toList();
-
-                      int votedByIndex = players.indexWhere(
-                        (player) => player['name'] == userName,
-                      );
-
-                      var addItem = {
-                        'votedBy': votedByIndex,
-                        'votedFor': votedForIndices,
-                      };
-
-                      FirebaseFirestore.instance
-                          .collection('games')
-                          .doc(gameCode)
-                          .update({
-                            'votes': FieldValue.arrayUnion([addItem]),
-                          });
-                    },
-                  )
-                  : Expanded(
-                    child:
-                        (wordTimerCountdown == 1)
-                            ? SizedBox(
-                              width: double.infinity,
-                              height: double.infinity,
-                              child: GestureDetector(
-                                behavior: HitTestBehavior.opaque,
-                                onTapDown: (_) {
-                                  setState(() {
-                                    revealWord = true;
-                                  });
-                                },
-                                onTapUp: (_) {
-                                  setState(() {
-                                    revealWord = false;
-                                  });
-                                },
-                                onTapCancel: () {
-                                  setState(() {
-                                    revealWord = false;
-                                  });
-                                },
-                                child: getContent(),
-                              ),
-                            )
-                            : getContent(),
-                  ),
+              getContentByWordState(),
 
               isHost
                   ? Row(
@@ -570,51 +710,7 @@ class _GameViewState extends State<GameView> {
                         },
                       ),
                       SizedBox(width: 10),
-                      wordState == 'VOTING'
-                          ? CupertinoButton.tinted(
-                            color: CupertinoColors.white,
-                            child: Text(
-                              'Skip Voting',
-                              style: TextStyle(color: CupertinoColors.white),
-                            ),
-                            onPressed: () {
-                              if (!mounted) {
-                                return;
-                              }
-
-                              initializeGame();
-                            },
-                          )
-                          : CupertinoButton.tinted(
-                            color: CupertinoColors.white,
-                            child: Text(
-                              'Start Voting',
-                              style: TextStyle(color: CupertinoColors.white),
-                            ),
-                            onPressed: () {
-                              if (!mounted) {
-                                return;
-                              }
-
-                              startVoting();
-                            },
-                          ),
-                      // CupertinoButton.tinted(
-                      //   color: CupertinoColors.white,
-                      //   child: Text(
-                      //     'Next Round',
-                      //     style: TextStyle(color: CupertinoColors.white),
-                      //   ),
-                      //   onPressed: () {
-                      //     if (!mounted) {
-                      //       return;
-                      //     }
-
-                      //     appendUsedWord(
-                      //       wordState,
-                      //     ).then((_) => initializeGame());
-                      //   },
-                      // ),
+                      getNextButtonByWordState(),
                     ],
                   )
                   : CupertinoButton.tinted(

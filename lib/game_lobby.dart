@@ -613,7 +613,10 @@ class _GameLobbyState extends State<GameLobby> {
                                     FirebaseFirestore.instance
                                         .collection('games')
                                         .doc(gameCode)
-                                        .update({'gameStarted': true});
+                                        .update({
+                                          'gameStarted': true,
+                                          'currentRound': 1,
+                                        });
                                   }
                                 },
                               ),
