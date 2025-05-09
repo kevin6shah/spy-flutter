@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:spycast/game_lobby.dart';
 import 'package:spycast/main.dart';
 import 'package:spycast/results_page.dart';
+import 'package:spycast/show_winner.dart';
 import 'package:spycast/voting_content.dart';
 
 class GameView extends StatefulWidget {
@@ -95,13 +96,6 @@ class _GameViewState extends State<GameView> {
     // Append the used word to the list of used words
     await FirebaseFirestore.instance.collection('games').doc(gameCode).update({
       'usedWords': FieldValue.arrayUnion([word]),
-    });
-  }
-
-  Future<void> resetUsedWords() async {
-    // Reset the used words list
-    await FirebaseFirestore.instance.collection('games').doc(gameCode).update({
-      'usedWords': [],
     });
   }
 
@@ -284,6 +278,12 @@ class _GameViewState extends State<GameView> {
       'wordState': 'RESULTS',
       'players': players,
       'spyWin': spyWin,
+    });
+  }
+
+  void showResults() {
+    FirebaseFirestore.instance.collection('games').doc(gameCode).update({
+      'wordState': 'FINAL_RESULTS',
     });
   }
 
@@ -498,6 +498,9 @@ class _GameViewState extends State<GameView> {
             currentRound: gameData['currentRound'] as int,
           );
 
+        case 'FINAL_RESULTS':
+          return ShowWinner(players: gameData['players']);
+
         default:
           return Expanded(
             child:
@@ -549,7 +552,7 @@ class _GameViewState extends State<GameView> {
             initializeGame();
           });
         case 'RESULTS':
-          if (gameData['currentRound'] <= gameData['numRounds']) {
+          if (gameData['currentRound'] < gameData['numRounds']) {
             return buildButton('Next Round', () {
               if (!mounted) return;
               initializeGame(true);
@@ -557,9 +560,12 @@ class _GameViewState extends State<GameView> {
           } else {
             return buildButton('Show Results', () {
               if (!mounted) return;
-              // showResults();
+              showResults();
             });
           }
+        case 'FINAL_RESULTS':
+          return SizedBox.shrink();
+
         default:
           return buildButton('Start Voting', () {
             if (!mounted) return;
@@ -652,15 +658,24 @@ class _GameViewState extends State<GameView> {
                             return;
                           }
 
-                          resetUsedWords().then((_) {
-                            FirebaseFirestore.instance
-                                .collection('games')
-                                .doc(gameCode)
-                                .update({
-                                  'wordState': 'INIT',
-                                  'gameStarted': false,
-                                });
-                          });
+                          // Reset points for all players to 0
+                          List<dynamic> players = List<dynamic>.from(
+                            gameData['players'],
+                          );
+                          for (var player in players) {
+                            player['points'] = 0;
+                          }
+                          FirebaseFirestore.instance
+                              .collection('games')
+                              .doc(gameCode)
+                              .update({
+                                'wordState': 'INIT',
+                                'gameStarted': false,
+                                'votes': [],
+                                'usedWords': [],
+                                'currentRound': 0,
+                                'players': players,
+                              });
                         },
                       ),
                       SizedBox(width: 10),
